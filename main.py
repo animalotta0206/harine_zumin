@@ -13,6 +13,7 @@ from PIL import Image
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils.manage_commands import create_option
 from discord.ext import commands
+from googletrans import Translator
 
 #discord関連の変数
 Intents = discord.Intents.default()
@@ -20,7 +21,7 @@ Intents.members = True
 Intents.voice_states = True
 Intents.reactions = True
 Intents.guilds = True
-bot = commands.Bot(command_prefix='z!')
+bot = commands.Bot(command_prefix='z!', intents=Intents)
 client = discord.Client(intents=Intents) 
 #slash = SlashCommand(client, sync_commands=True)
 slash = SlashCommand(client, sync_commands=False)
@@ -184,7 +185,7 @@ async def number_game_expert(ctx: SlashContext):
                 i += 1
                 await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも大きい数です！")
         except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください。")
+            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください�������")
             break
         except Exception as e:
             embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
@@ -220,11 +221,11 @@ async def number_game_Worlds_end(ctx: SlashContext):
                 elif i <= 350:
                     rank = "```py\nanswer = random.randint(1, 1000)\nmessage = await client.wait_for('message', check=check, timeout=30)\nguess = int(message.content)\n```"
                 else:
-                    rank = f"ここまで…{i}回…長かった…"
+                    rank = f"ここまで長かった…"
                 await ctx.send(f"<@{message.author.id}>\n正解です！試行回数は{i}回でした！\n称号:「{rank}」")
                 break
-            elif guess >= 101:
-                await ctx.send(f"<@{message.author.id}>\n100以下の数字で回答してください！")
+            elif guess >= 1001:
+                await ctx.send(f"<@{message.author.id}>\n1000以下の数字で回答してください！")
             elif guess > answer:
                 i += 1
                 await ctx.send(f"<@{message.author.id}>\n残念！\n答えが変わりました！")
@@ -310,7 +311,27 @@ async def userinfo(ctx: SlashContext, member: discord.Member):
     embed.add_field(name="アカウント作成日時", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
     embed.set_thumbnail(url=member.avatar_url)
     await ctx.send(embed=embed)
-    
+
+@slash.slash(name="usercheck", description="ユーザ識別子から一意の文字列に変更されているかを確認できます。")
+async def usercheck(ctx: SlashContext):
+    original_response = await ctx.send("<a:b_sending:1108227693230702642>読み込み中です…")
+    guild = client.get_guild(ctx.guild.id)  # サーバーIDを指定
+    edit_id = 0
+    noedit_id = 0
+    bot_count = 0
+    for member in guild.members:
+        if member.bot:
+            bot_count += 1
+        if member.discriminator == "0":
+            edit_id += 1
+        else:
+            noedit_id += 1
+    noedit_id -= bot_count
+    embed = discord.Embed(title=f"{ctx.guild.name}のユーザ識別子変更状況(ベータ版)", description="識別子変更に関する情報は[こちらから](https://support.discord.com/hc/ja/articles/12620128861463-%E6%96%B0%E3%81%97%E3%81%84%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E5%90%8D-%E8%A1%A8%E7%A4%BA%E3%81%95%E3%82%8C%E3%82%8B%E5%90%8D%E5%89%8D)ご確認ください。", color=0x387aff)
+    embed.add_field(name="識別子変更済みユーザー数", value=f"{edit_id}", inline=False)
+    embed.add_field(name="識別子変更がまだのユーザ数", value=f"{noedit_id}", inline=True)
+    await original_response.edit(content="<:b_check:1043897762590236704>読み込みが完了しました。", embed=embed)
+
 #メッセージ送信時
 @client.event
 async def on_message(message):
@@ -323,7 +344,7 @@ async def on_message(message):
       ]
       index = random.randint(0, len(texts) - 1)
       reply = texts[index]
-      await message.channel.send(reply)
+      await message.reply(reply)
     if message.content == 'ぱとぇvsKONAMI':
      await message.channel.send("ただいまより、「株式会社ぱとえ」🆚「株式会社コナミアミューズメント」の裁判を開廷します。\rLet's Start!")
      await asyncio.sleep(10)
@@ -344,16 +365,44 @@ async def on_message(message):
      async with message.channel.typing():
          await asyncio.sleep(5)
      await message.channel.send(f"Winner:「{text1}」\r対戦ありがとうございました。")
-    if message.content.find("台パン" ) != -1:
-     await message.channel.send("台パンだめ、ぜったい")
-     print (f"ユーザー:{message.author.name}\n台パンコマンドが実行されました。\n-------------------------------")
-    if message.content == "z!join":
-        if message.author.voice is None or message.author.voice.channel is None:
-            await message.channel.send("あなたはボイスチャンネルに接続していません。")
+    
+    if message.channel.name == "逆翻訳チャンネル":
+        if message.author.bot:
             return
-        9# ボイスチャンネルに接続する
-        await message.author.voice.channel.connect()
-
+        if message.reference:
+            return
+        wait_message = await message.reply("<a:b_sending:1108227693230702642>読み込み中です…\nこの読み込みには数分かかることがあります…。")
+        async with message.channel.typing():
+            try:
+                text1 = message.content
+                translator = Translator()
+                translated1 = translator.translate(text1, dest='en')
+                await wait_message.edit(content=f"処理中…\nSTEP (1/10)")
+                translated2 = translator.translate(translated1.text, dest='zh-CN')
+                await wait_message.edit(content=f"処理中…\nSTEP (2/10)")
+                translated3 = translator.translate(translated2.text, dest='ko')
+                await wait_message.edit(content=f"処理中…\nSTEP (3/10)")
+                translated4 = translator.translate(translated3.text, dest='nl')
+                await wait_message.edit(content=f"処理中…\nSTEP (4/10)")
+                translated5 = translator.translate(translated4.text, dest='ru')
+                await wait_message.edit(content=f"処理中…\nSTEP (5/10)")
+                translated6 = translator.translate(translated5.text, dest='es')
+                await wait_message.edit(content=f"処理中…\nSTEP (6/10)")
+                translated7 = translator.translate(translated6.text, dest='th')
+                await wait_message.edit(content=f"処理中…\nSTEP (7/10)")
+                translated8 = translator.translate(translated7.text, dest='uk')
+                await wait_message.edit(content=f"処理中…\nSTEP (8/10)")
+                translated9 = translator.translate(translated8.text, dest='vi')
+                await wait_message.edit(content=f"処理中…\nSTEP (9/10)")
+                translated10 = translator.translate(translated9.text, dest='fr')
+                await wait_message.edit(content=f"処理中…\nSTEP (10/10)")
+                translated11 = translator.translate(translated10.text, dest='ja')
+                await wait_message.edit(content=translated11.text)
+            except Exception as e:
+                embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+                embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
+                embed.timestamp = datetime.datetime.utcnow()
+                await wait_message.edit(content="transrate is Faild", embed=embed)
 
 #ボイスチャンネル関連
 @client.event
@@ -363,7 +412,7 @@ async def on_voice_state_update(member, before, after):
         # ログに出力するメッセージ
         message = f'<@{member.id}>が<#{after.channel.id}>に参加しました。'
         embed=discord.Embed(description=message,color=0x009dff)
-        embed.set_author(name="{}#{}".format(member.name, member.discriminator),icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
+        embed.set_author(name=f"{member.name}",icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
         embed.set_footer(text=f"ID:{member.id}")
         embed.timestamp = datetime.datetime.utcnow()
         # テキストチャンネルを取得
@@ -377,7 +426,7 @@ async def on_voice_state_update(member, before, after):
         # ログに出力するメッセージ
         message = f'<@{member.id}>が<#{before.channel.id}>から退出しました。'
         embed=discord.Embed(description=message,color=0xff0000)
-        embed.set_author(name="{}#{}".format(member.name, member.discriminator),icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
+        embed.set_author(name=f"{member.name}",icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
         embed.set_footer(text=f"ID:{member.id}")
         embed.timestamp = datetime.datetime.utcnow()
         # テキストチャンネルを取得
@@ -390,7 +439,7 @@ async def on_voice_state_update(member, before, after):
         # ボイスチャンネルから移動した場合
         message = f'<@{member.id}>が\n<#{before.channel.id}>から<#{after.channel.id}>へ移動しました。'
         embed=discord.Embed(description=message,color=0x00ff00)
-        embed.set_author(name="{}#{}".format(member.name, member.discriminator),icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
+        embed.set_author(name=f"{member.name}", icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
         embed.set_footer(text=f"ID:{member.id}")
         embed.timestamp = datetime.datetime.utcnow()
         channel = discord.utils.get(member.guild.text_channels, name='ボイスチャンネルログ')
@@ -408,17 +457,17 @@ async def on_message_delete(message):
 
     # 削除ログチャンネルを取得
     channel = discord.utils.get(message.guild.channels, name="削除ログ")
-
+    if channel is not None:
     # 削除されたメッセージの情報を取得
-    embed = discord.Embed(title="メッセージ削除", color=discord.Color.red())
-    embed.add_field(name="チャンネル", value=message.channel.mention, inline=False)
-    embed.add_field(name="メッセージ内容", value=message.content, inline=False)
-    embed.set_author(name="{}#{}".format(message.author.name, message.author.discriminator),icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(message.author.id, message.author.avatar))
-    embed.set_footer(text="{} / UserID:{}".format(message.guild.name, message.author.id),icon_url="https://media.discordapp.net/icons/{}/{}.png?size=1024".format(message.guild.id, message.guild.icon))
-    embed.timestamp = datetime.datetime.utcnow()
+        embed = discord.Embed(title="メッセージ削除", color=discord.Color.red())
+        embed.add_field(name="チャンネル", value=message.channel.mention, inline=False)
+        embed.add_field(name="メッセージ内容", value=message.content, inline=False)
+        embed.set_author(name=f"{message.author.name}",icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(message.author.id, message.author.avatar))
+        embed.set_footer(text="{} / UserID:{}".format(message.guild.name, message.author.id),icon_url="https://media.discordapp.net/icons/{}/{}.png?size=1024".format(message.guild.id, message.guild.icon))
+        embed.timestamp = datetime.datetime.utcnow()
 
     # 削除ログにメッセージを送信
-    await channel.send(embed=embed)
+        await channel.send(embed=embed)
     
 #メッセージ編集
 @client.event
@@ -430,11 +479,12 @@ async def on_message_edit(before, after):
     channel = discord.utils.get(after.guild.channels, name="削除ログ")
     if channel is not None:
         embed = discord.Embed(title="メッセージ編集",
+                              description=f"[元のメッセージを見る](https://discord.com/channels/{after.guild.id}/{after.channel.id}/{after.id})",
                               color=0x00ff00)
         embed.add_field(name="チャンネル", value=after.channel.mention, inline=False)
         embed.add_field(name="編集前のメッセージ", value=before.content, inline=False)
         embed.add_field(name="編集後のメッセージ", value=after.content, inline=False)
-        embed.set_author(name="{}#{}".format(after.author.name, after.author.discriminator),icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(after.author.id, after.author.avatar))
+        embed.set_author(name=f"{after.author.name}",icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(after.author.id, after.author.avatar))
         embed.set_footer(text="{} / UserID:{}".format(after.guild.name, after.author.id),icon_url="https://media.discordapp.net/icons/{}/{}.png?size=1024".format(after.guild.id, after.guild.icon))
         embed.timestamp = datetime.datetime.utcnow()
         await channel.send(embed=embed)
@@ -442,6 +492,14 @@ async def on_message_edit(before, after):
 #サーバーログ
 @client.event
 async def on_guild_join(guild):
+    system_channel = guild.system_channel
+    if system_channel is not None:
+        message = "はじめまして！ハリネズミン！です！"
+        embed=discord.Embed(title="ハリネズミン！v2 ", description="ここでは、botの基本的な機能について紹介します。\nまたこの内容は</help:1082678201194664117>でもご確認いただけます。", color=0x00ff04)
+        embed.add_field(name="削除・メッセージ編集ログ機能", value="「削除ログ」という名前のチャンネルを作成すると、メッセージの削除・編集ログが残るようになります。", inline=False)
+        embed.add_field(name="ボイスチャンネル入退出ログ機能", value="「ボイスチャンネルログ」という名前のチャンネルを作成すると、サーバー内でボイスチャンネルへの入退出があった場合に通知します。", inline=False)
+        embed.add_field(name="サポートサーバーのご案内", value="サポートサーバーでは、製作者に直接お問い合わせすることができます。\n[サポートサーバーに参加](https://discord.gg/pFgBSt6MPX)", inline=False)
+        await system_channel.send(message, embed=embed)
     channel = client.get_channel(1108597602766827561)
     embed=discord.Embed(title="新規bot参加", description=f"Botが「{guild.name}」に参加しました。", color=0x00ffe1)
     embed.set_footer(text=f"GuildID:{guild.id}", icon_url=guild.icon_url)
