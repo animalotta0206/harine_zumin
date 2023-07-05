@@ -1,4 +1,4 @@
-# ハリネズミン！Discord bot
+# ハリネズミン！v2 Discord bot
 Discordで好評稼働中のbotです。<br>
 
 ## ハリネズミン！とは…
