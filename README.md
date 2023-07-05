@@ -1,6 +1,5 @@
 # ハリネズミン！Discord bot
 Discordで好評稼働中のbotです。<br>
-現在Githubは準備中です…
 
 ## ハリネズミン！とは…
 Discordで稼働している愉快なハリネズミのbotです。<br>
