@@ -343,7 +343,7 @@ async def on_message(message):
       await message.reply(reply)
 
     if message.channel.name == "逆翻訳チャンネル":
-        max_attempts = 3  # 最大再試行回数
+        max_attempts = 4  # 最大再試行回数
         attempt = 0
         if message.author.bot:
             return
@@ -356,20 +356,60 @@ async def on_message(message):
                     text1 = message.content
                     translator = Translator()
                     translated1 = translator.translate(text1, dest='ko')
-                    await wait_message.edit(content=f"処理中…\nSTEP (1/5)\nTry ({attempt+1}/{max_attempts})")
+                    await wait_message.edit(content=f"処理中…\nSTEP (1/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated2 = translator.translate(translated1.text, dest='ar')
-                    await wait_message.edit(content=f"処理中…\nSTEP (2/5)\nTry ({attempt+1}/{max_attempts})")
+                    await wait_message.edit(content=f"処理中…\nSTEP (2/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated3 = translator.translate(translated2.text, dest='ha')
-                    await wait_message.edit(content=f"処理中…\nSTEP (3/5)\nTry ({attempt+1}/{max_attempts})")
+                    await wait_message.edit(content=f"処理中…\nSTEP (3/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated4 = translator.translate(translated3.text, dest='sd')
-                    await wait_message.edit(content=f"処理中…\nSTEP (4/5)\nTry ({attempt+1}/{max_attempts})")
+                    await wait_message.edit(content=f"処理中…\nSTEP (4/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated5 = translator.translate(translated4.text, dest='en')
-                    await wait_message.edit(content=f"<a:b_sending:1108227693230702642>しばらくお待ち下さい…\n日本語に戻しています…\nSTEP (5/5)\nTry ({attempt+1}/{max_attempts})")
+                    await wait_message.edit(content=f"<a:b_sending:1108227693230702642>しばらくお待ち下さい…\n日本語に戻しています…\nSTEP (5/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated11 = translator.translate(translated5.text, dest='ja')
                 except Exception as e:
-                    await wait_message.edit(content=f"エラーが発生しました。3秒後に再試行します…\nTry ({attempt+1}/{max_attempts})")
+                    if attempt == 0:
+                        e_message = f"エラーが発生しました。5秒後に再試行します…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts-1})"
+                        slep = 5
+                        #エラーログをハリネズミン！の巣！へ送信する処理
+                        channel = client.get_channel(1118756012351029358)
+                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
+                        embed.timestamp = datetime.datetime.utcnow()
+                        await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
+                        #エラーログの処理はここまで
+                    elif attempt == 1:
+                        e_message = f"エラーが発生しました。10秒後に再試行します…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts-1})"
+                        slep = 10
+                        #エラーログをハリネズミン！の巣！へ送信する処理
+                        channel = client.get_channel(1118756012351029358)
+                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
+                        embed.timestamp = datetime.datetime.utcnow()
+                        await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
+                        #エラーログの処理はここまで
+                    elif attempt == 2:
+                        e_message = f"エラーが発生しました。15秒後に再試行します…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts-1})"
+                        slep = 15
+                        #エラーログをハリネズミン！の巣！へ送信する処理
+                        channel = client.get_channel(1118756012351029358)
+                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
+                        embed.timestamp = datetime.datetime.utcnow()
+                        await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
+                        #エラーログの処理はここまで
+                    else:
+                        e_message = f"最大試行回数に到達しました。処理を中断し、エラー情報を収集しています…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts})"
+                        slep = 3
+                        #エラーログをハリネズミン！の巣！へ送信する処理
+                        channel = client.get_channel(1118756012351029358)
+                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
+                        embed.timestamp = datetime.datetime.utcnow()
+                        await channel.send(content=f"逆翻訳機能のエラー\n処理に失敗しました。", embed=embed)
+                        #エラーログの処理はここまで
+                    await wait_message.edit(content=e_message)
                     attempt += 1
-                    time.sleep(3)
+                    time.sleep(slep)
                     e_text = str(e)
                 else:
                     await wait_message.edit(content=translated11.text)
@@ -378,7 +418,7 @@ async def on_message(message):
             embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{e_text}\n```", color=0xff0000)
             embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
             embed.timestamp = datetime.datetime.utcnow()
-            await wait_message.edit(content="transrate is Faild", embed=embed)
+            await wait_message.edit(content="<:b_error:1041554270958387220>transrate is Faild", embed=embed)
 
 #ボイスチャンネル関連
 @client.event
