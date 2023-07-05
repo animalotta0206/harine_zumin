@@ -27,8 +27,21 @@ $ python -- version
 を実行してください。<br>
 Discord.pyの導入<br>
 ```sh
-$pip install discord
+$ pip install discord
 ```
+
+## インストールが必要なモジュール
+このコードを使用する上で必要なモジュールは以下のとおりです。<br>
+・threading 
+```sh
+$ pip install threading
+```
+
+# このリポジトリをクローンする
+```sh
+$ git clone https://github.com/animalotta0206/harine_zumin/
+```
+クローンを実行すると`harine_zumin`という名前のファイルが作成され、その中にクローンしたファイルが保存されます。
 
 ## ハリネズミン！に関するお問い合わせは…
 [サポートサーバー](https://discord.com/invite/pFgBSt6MPX)までお願いします。
