@@ -8,6 +8,7 @@ import asyncio
 import random
 import platform
 import sys
+import threading
 import gomashio
 from PIL import Image
 from discord_slash import SlashCommand, SlashContext
@@ -23,8 +24,11 @@ Intents.reactions = True
 Intents.guilds = True
 bot = commands.Bot(command_prefix='z!', intents=Intents)
 client = discord.Client(intents=Intents) 
-#slash = SlashCommand(client, sync_commands=True)
-slash = SlashCommand(client, sync_commands=False)
+slash = SlashCommand(client, sync_commands=True)
+#slash = SlashCommand(client, sync_commands=False)
+
+#その他の変数
+semaphore = threading.BoundedSemaphore(value=2)
 
 #スラッシュコマンド
 @slash.slash(name="help", description="botのヘルプを表示します")
@@ -185,7 +189,7 @@ async def number_game_expert(ctx: SlashContext):
                 i += 1
                 await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも大きい数です！")
         except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください�������")
+            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください�������������")
             break
         except Exception as e:
             embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
@@ -239,19 +243,6 @@ async def number_game_Worlds_end(ctx: SlashContext):
             embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
             await ctx.send(f"<@{message.author.id}>\nエラーが発生しました。\nもう一度やり直してください。", embed=embed)
             break
-
-@slash.slash(name="oumu", 
-             description="オウム返しします。", 
-             options=[
-                 create_option(
-                     name="say",
-                     description="改行はたぶんできません。",
-                     option_type=3,
-                     required=True
-                 ),
-             ])
-async def oumu(ctx: SlashContext, say: str):
-     await ctx.send(f"{say}")
      
 @slash.slash(name="ping",description="botの反応速度を測定できます。")
 async def ping(ctx: SlashContext):
@@ -327,16 +318,21 @@ async def usercheck(ctx: SlashContext):
         else:
             noedit_id += 1
     noedit_id -= bot_count
-    embed = discord.Embed(title=f"{ctx.guild.name}のユーザ識別子変更状況(ベータ版)", description="識別子変更に関する情報は[こちらから](https://support.discord.com/hc/ja/articles/12620128861463-%E6%96%B0%E3%81%97%E3%81%84%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E5%90%8D-%E8%A1%A8%E7%A4%BA%E3%81%95%E3%82%8C%E3%82%8B%E5%90%8D%E5%89%8D)ご確認ください。", color=0x387aff)
+    embed = discord.Embed(title=f"{ctx.guild.name}のユーザ識別子変更状況", description="識別子変更に関する情報は[こちらから](https://support.discord.com/hc/ja/articles/12620128861463-%E6%96%B0%E3%81%97%E3%81%84%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E5%90%8D-%E8%A1%A8%E7%A4%BA%E3%81%95%E3%82%8C%E3%82%8B%E5%90%8D%E5%89%8D)ご確認ください。", color=0x387aff)
     embed.add_field(name="識別子変更済みユーザー数", value=f"{edit_id}", inline=False)
     embed.add_field(name="識別子変更がまだのユーザ数", value=f"{noedit_id}", inline=True)
     await original_response.edit(content="<:b_check:1043897762590236704>読み込みが完了しました。", embed=embed)
 
+@slash.slash(name="share_discord_profile", description="あなたのDiscordプロフィールをほかのSNSで簡単に共有できるURLを生成します。")
+async def share_discord_profile(ctx: SlashContext):
+    await ctx.send(f"{ctx.author.mention}のDiscordプロフィールリンクはこちらです。\nhttps://discord.com/users/{ctx.author.id}")
+
 #メッセージ送信時
 @client.event
 async def on_message(message):
-    if message.author.bot:#BOTの場合は何もせず終了
-     return
+    if message.author.id == client.user.id:
+        return
+    
     if message.content.find('<@990987427818651648>') != -1:
       texts = [ #ランダムで返す文字列
       'ひどいズミン………',
@@ -345,64 +341,44 @@ async def on_message(message):
       index = random.randint(0, len(texts) - 1)
       reply = texts[index]
       await message.reply(reply)
-    if message.content == 'ぱとぇvsKONAMI':
-     await message.channel.send("ただいまより、「株式会社ぱとえ」🆚「株式会社コナミアミューズメント」の裁判を開廷します。\rLet's Start!")
-     await asyncio.sleep(10)
-     await message.channel.send("裁判の結果が出ました！\r運命やいかに………")
-     rand1 = [
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社コナミアミューズメント',
-         '株式会社ぱとえ']
-     index = random.randint(0, len(rand1) - 1)
-     text1 = rand1[index] 
-     async with message.channel.typing():
-         await asyncio.sleep(5)
-     await message.channel.send(f"Winner:「{text1}」\r対戦ありがとうございました。")
-    
+
     if message.channel.name == "逆翻訳チャンネル":
+        max_attempts = 3  # 最大再試行回数
+        attempt = 0
         if message.author.bot:
             return
         if message.reference:
             return
         wait_message = await message.reply("<a:b_sending:1108227693230702642>読み込み中です…\nこの読み込みには数分かかることがあります…。")
-        async with message.channel.typing():
-            try:
-                text1 = message.content
-                translator = Translator()
-                translated1 = translator.translate(text1, dest='en')
-                await wait_message.edit(content=f"処理中…\nSTEP (1/10)")
-                translated2 = translator.translate(translated1.text, dest='zh-CN')
-                await wait_message.edit(content=f"処理中…\nSTEP (2/10)")
-                translated3 = translator.translate(translated2.text, dest='ko')
-                await wait_message.edit(content=f"処理中…\nSTEP (3/10)")
-                translated4 = translator.translate(translated3.text, dest='nl')
-                await wait_message.edit(content=f"処理中…\nSTEP (4/10)")
-                translated5 = translator.translate(translated4.text, dest='ru')
-                await wait_message.edit(content=f"処理中…\nSTEP (5/10)")
-                translated6 = translator.translate(translated5.text, dest='es')
-                await wait_message.edit(content=f"処理中…\nSTEP (6/10)")
-                translated7 = translator.translate(translated6.text, dest='th')
-                await wait_message.edit(content=f"処理中…\nSTEP (7/10)")
-                translated8 = translator.translate(translated7.text, dest='uk')
-                await wait_message.edit(content=f"処理中…\nSTEP (8/10)")
-                translated9 = translator.translate(translated8.text, dest='vi')
-                await wait_message.edit(content=f"処理中…\nSTEP (9/10)")
-                translated10 = translator.translate(translated9.text, dest='fr')
-                await wait_message.edit(content=f"処理中…\nSTEP (10/10)")
-                translated11 = translator.translate(translated10.text, dest='ja')
-                await wait_message.edit(content=translated11.text)
-            except Exception as e:
-                embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
-                embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
-                embed.timestamp = datetime.datetime.utcnow()
-                await wait_message.edit(content="transrate is Faild", embed=embed)
+        while attempt < max_attempts:
+            async with message.channel.typing():
+                try:
+                    text1 = message.content
+                    translator = Translator()
+                    translated1 = translator.translate(text1, dest='ko')
+                    await wait_message.edit(content=f"処理中…\nSTEP (1/5)\nTry ({attempt+1}/{max_attempts})")
+                    translated2 = translator.translate(translated1.text, dest='ar')
+                    await wait_message.edit(content=f"処理中…\nSTEP (2/5)\nTry ({attempt+1}/{max_attempts})")
+                    translated3 = translator.translate(translated2.text, dest='ha')
+                    await wait_message.edit(content=f"処理中…\nSTEP (3/5)\nTry ({attempt+1}/{max_attempts})")
+                    translated4 = translator.translate(translated3.text, dest='sd')
+                    await wait_message.edit(content=f"処理中…\nSTEP (4/5)\nTry ({attempt+1}/{max_attempts})")
+                    translated5 = translator.translate(translated4.text, dest='en')
+                    await wait_message.edit(content=f"<a:b_sending:1108227693230702642>しばらくお待ち下さい…\n日本語に戻しています…\nSTEP (5/5)\nTry ({attempt+1}/{max_attempts})")
+                    translated11 = translator.translate(translated5.text, dest='ja')
+                except Exception as e:
+                    await wait_message.edit(content=f"エラーが発生しました。3秒後に再試行します…\nTry ({attempt+1}/{max_attempts})")
+                    attempt += 1
+                    time.sleep(3)
+                    e_text = str(e)
+                else:
+                    await wait_message.edit(content=translated11.text)
+                    break
+        else:
+            embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{e_text}\n```", color=0xff0000)
+            embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
+            embed.timestamp = datetime.datetime.utcnow()
+            await wait_message.edit(content="transrate is Faild", embed=embed)
 
 #ボイスチャンネル関連
 @client.event
@@ -495,7 +471,7 @@ async def on_guild_join(guild):
     system_channel = guild.system_channel
     if system_channel is not None:
         message = "はじめまして！ハリネズミン！です！"
-        embed=discord.Embed(title="ハリネズミン！v2 ", description="ここでは、botの基本的な機能について紹介します。\nまたこの内容は</help:1082678201194664117>でもご確認いただけます。", color=0x00ff04)
+        embed=discord.Embed(title="ハリネズミン！v2 ", description="ここでは、botの基本的な機能につい��紹介します。\nまたこの内容は</help:1082678201194664117>でもご確認いただけます。", color=0x00ff04)
         embed.add_field(name="削除・メッセージ編集ログ機能", value="「削除ログ」という名前のチャンネルを作成すると、メッセージの削除・編集ログが残るようになります。", inline=False)
         embed.add_field(name="ボイスチャンネル入退出ログ機能", value="「ボイスチャンネルログ」という名前のチャンネルを作成すると、サーバー内でボイスチャンネルへの入退出があった場合に通知します。", inline=False)
         embed.add_field(name="サポートサーバーのご案内", value="サポートサーバーでは、製作者に直接お問い合わせすることができます。\n[サポートサーバーに参加](https://discord.gg/pFgBSt6MPX)", inline=False)
@@ -516,5 +492,5 @@ async def on_ready():
     print(client.user.name)  # Botの名前
     print(discord.__version__)  # discord.pyのバージョン
     print('------')
-    
-client.run("TOKEN here")
+
+client.run('TOKEN here')
