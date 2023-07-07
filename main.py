@@ -3,14 +3,13 @@ import datetime
 import pytz
 import time
 import requests
-import ffmpeg
 import asyncio
 import random
 import platform
 import sys
+import json
 import threading
 import gomashio
-from PIL import Image
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils.manage_commands import create_option
 from discord.ext import commands
@@ -37,6 +36,7 @@ async def help(ctx: SlashContext):
     embed.add_field(name="削除・メッセージ編集ログ機能", value="「削除ログ」という名前のチャンネルを作成すると、メッセージの削除・編集ログが残るようになります。", inline=False)
     embed.add_field(name="ボイスチャンネル入退出ログ機能", value="「ボイスチャンネルログ」という名前のチャンネルを作成すると、サーバー内でボイスチャンネルへの入退出があった場合に通知します。", inline=False)
     embed.add_field(name="サポートサーバーのご案内", value="サポートサーバーでは、製作者に直接お問い合わせすることができます。\n[サポートサーバーに参加](https://discord.gg/pFgBSt6MPX)", inline=False)
+    embed.add_field(name="git hubリポジトリ", value="ハリネズミン！v2のコードを見ることができます。\n[リポジトリを見る](https://github.com/animalotta0206/harine_zumin/)", inline=False)
     await ctx.send(embed=embed)
 
 @slash.slash(name="taiman", description="怠慢やね画像を送信します。")
@@ -342,7 +342,10 @@ async def on_message(message):
       reply = texts[index]
       await message.reply(reply)
 
-    if message.channel.name == "逆翻訳チャンネル":
+    if message.channel.name in "逆翻訳チャンネル":
+        channelid = message.channel.id
+        channel = client.get_channel(channelid)
+        is_nsfw = channel.is_nsfw()
         max_attempts = 4  # 最大再試行回数
         attempt = 0
         if message.author.bot:
@@ -350,6 +353,12 @@ async def on_message(message):
         if message.reference:
             return
         wait_message = await message.reply("<a:b_sending:1108227693230702642>読み込み中です…\nこの読み込みには数分かかることがあります…。")
+        if is_nsfw is False:
+            with open('gomaoil/ward_filter.json', 'r') as f:
+                ward_f = json.load(f)
+            if message.content in ward_f:
+                await wait_message.edit(content="不適切な単語を検出しました。翻訳を中止します。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
+                return
         while attempt < max_attempts:
             async with message.channel.typing():
                 try:
@@ -412,7 +421,15 @@ async def on_message(message):
                     time.sleep(slep)
                     e_text = str(e)
                 else:
-                    await wait_message.edit(content=translated11.text)
+                    #翻訳が正常に終了したときの処理
+                    if is_nsfw is False:
+                        if translated11.text in ward_f:
+                            await wait_message.edit(content="不適切な翻訳を検出しました。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
+                            return
+                        else:
+                            await wait_message.edit(content=translated11.text)
+                    else:
+                        await wait_message.edit(content=translated11.text)
                     break
         else:
             embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{e_text}\n```", color=0xff0000)
@@ -532,5 +549,6 @@ async def on_ready():
     print(client.user.name)  # Botの名前
     print(discord.__version__)  # discord.pyのバージョン
     print('------')
+
 
 client.run('TOKEN here')
