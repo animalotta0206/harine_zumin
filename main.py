@@ -10,6 +10,7 @@ import sys
 import json
 import threading
 import gomashio
+import animalotta_sim
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils.manage_commands import create_option
 from discord.ext import commands
@@ -23,11 +24,25 @@ Intents.reactions = True
 Intents.guilds = True
 bot = commands.Bot(command_prefix='z!', intents=Intents)
 client = discord.Client(intents=Intents) 
-slash = SlashCommand(client, sync_commands=True)
-#slash = SlashCommand(client, sync_commands=False)
+#slash = SlashCommand(client, sync_commands=True)
+slash = SlashCommand(client, sync_commands=False)
 
 #その他の変数
 semaphore = threading.BoundedSemaphore(value=2)
+
+#サポート鯖リンク
+support_guild = '[サポートサーバーに参加する](https://discord.gg/pFgBSt6MPX)'
+
+#役職パネルの関数とか
+def extract_message_id(url):
+    import re
+    pattern = r"\/(\d+)\/(\d+)\/(\d+)$"
+    match = re.search(pattern, url)
+    if match:
+        message_id = int(match.group(3))
+        return message_id
+    else:
+        return None
 
 #スラッシュコマンド
 @slash.slash(name="help", description="botのヘルプを表示します")
@@ -189,7 +204,7 @@ async def number_game_expert(ctx: SlashContext):
                 i += 1
                 await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも大きい数です！")
         except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください�������������")
+            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください。")
             break
         except Exception as e:
             embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
@@ -327,6 +342,249 @@ async def usercheck(ctx: SlashContext):
 async def share_discord_profile(ctx: SlashContext):
     await ctx.send(f"{ctx.author.mention}のDiscordプロフィールリンクはこちらです。\nhttps://discord.com/users/{ctx.author.id}")
 
+@slash.slash(name="purge_message", description="最大2000件までのメッセージを削除できます。",)
+async def purge_message(ctx: SlashContext, about: int):
+    if ctx.author.guild_permissions.manage_messages:
+        if about >= 2001:
+            await ctx.send('メッセージの削除は2000件までに制限されています。')
+            return
+        try:
+            target_channel = client.get_channel(ctx.channel.id)
+            if about >= 500:
+                w_message = await ctx.send(f'<a:b_sending:1108227693230702642>{about}件のメッセージを削除しています………\n>>> この処理には数分かかることがあります。\nこれ以降のメッセージは削除対象になりませんので、いつも通りチャットをすることができます。')    
+            else:
+                w_message = await ctx.send(f'<a:b_sending:1108227693230702642>{about}件のメッセージを削除しています………')
+            deleted = await target_channel.purge(limit=about, before=discord.Object(id=w_message.id), bulk=bool(True))
+            await w_message.edit(content=f'<:b_check:1043897762590236704>{len(deleted)}件のメッセージを削除しました。')
+        except discord.Forbidden:
+            await w_message.edit(content="Botに「メッセージの管理権限」がありません。\nBotの「メッセージの管理権限」を有効化してください。")
+        except discord.HTTPException as e:
+            embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+            embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
+            embed.add_field(name="サポートサーバーに参加してみませんか？", value=f"サポートサーバーではより迅速に対応できます。\n{support_guild}", inline=True)
+            embed.timestamp = datetime.datetime.utcnow()
+            await ctx.send(content=f'エラーが発生しました。\nここまで{len(deleted)}件のメッセージを削除しました。', embed=embed)
+    else:
+        await ctx.send(f"コマンド実行者に「メッセージの管理権限」が無いため、リクエストは拒否されました。")
+
+@slash.slash(name='panel_create', description='役職パネルを作成します。', options=[
+    {
+      "name":'role',
+      "description":"役職パネルに追加するロールを指定してください。",
+      "type": 8,
+      "required": True
+    },
+    {
+        "name":'panel_title',
+        "description":'パネルのタイトルを指定できます。',
+        "type": 3,
+        "required": True
+    },
+    {
+        "name":'emoji',
+        "description":"ロールの絵文字を追加します。",
+        "type":3,
+        "required": True
+    }
+    ])
+async def panel_create(ctx: SlashContext, role: discord.Role, panel_title: str, emoji: str):
+    if ctx.author.guild_permissions.manage_roles:
+        m = await ctx.channel.send('<a:b_sending:1108227693230702642>役職パネルを作成しています………')
+        embed = discord.Embed(title=panel_title)
+        embed.add_field(name=emoji, value=f"<@&{role.id}>", inline=True)
+        embed.set_footer(text=f'最終更新者:{ctx.author.name}')
+        await m.add_reaction(f'{emoji}')
+        await m.edit(content='ロールに対応する絵文字にリアクションするとロールを受け取ることができます。', embed=embed)
+        reply = await ctx.send("役職パネルを作成しました！")
+        await asyncio.sleep(3)
+        await reply.delete()
+    else:
+        await ctx.send("ロールの管理権限を持っていないため実行できません。")
+
+@slash.slash(name='panel_edit', description='役職パネルを編集します。', options=[
+    {
+        "name":"url",
+        "description":"役職パネルのメッセージURLを入力してください。",
+        "type": 3,
+        "required": True
+    },
+    {
+        "name":"title",
+        "description":"パネルのタイトルを編集できます。",
+        "type": 3,
+        "required": True
+    }
+    ])
+async def panel_edit(ctx: SlashContext, url: str, title: str):
+    if ctx.author.guild_permissions.manage_roles:
+        message_id = extract_message_id(url)
+        channel = ctx.channel
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            await ctx.send("指定されたメッセージは見つかりませんでした。")
+            return
+        if message.author.id != client.user:
+            if message.content == "ロールに対応する絵文字にリアクションするとロールを受け取ることができます。":
+                existing_embed = message.embeds[0]
+                existing_embed.title = title
+                await message.edit(embed=existing_embed)
+                m = await ctx.send("変更が完了しました。")
+                await asyncio.sleep(5)
+                await m.delete()
+            else:
+                await ctx.send("指定されたメッセージは役職パネルではありません。")
+        else:
+            await ctx.send("指定されたメッセージURLはbotのメッセージではないため利用できません。")
+    else:
+        await ctx.send("ロールの管理権限を持っていないため実行できません。")
+
+@slash.slash(name="panel_add_role", description="役職パネルにロールを追加します(一度につき最大3つまで同時追加が可能です。)", options=[
+    {
+        "name":"url",
+        "description":"役職を追加するパネルのメッセージURLを入力してください。",
+        "type": 3,
+        "required": True
+    },
+    {
+        "name":"role1",
+        "description":"追加する役職を入力",
+        "type": 8,
+        "required": True
+    },
+    {
+        "name":"emoji1",
+        "description":"役職に追加する絵文字を指定",
+        "type": 3,
+        "required": True
+    },
+        {
+        "name":"role2",
+        "description":"追加する役職を入力(2つめ)",
+        "type": 8,
+        "required": False
+    },
+    {
+        "name":"emoji2",
+        "description":"役職に追加する絵文字を指定(2つめ)",
+        "type": 3,
+        "required": False
+    },
+        {
+        "name":"role3",
+        "description":"追加する役職を入力(3つめ)",
+        "type": 8,
+        "required": False
+    },
+    {
+        "name":"emoji3",
+        "description":"役職に追加する絵文字を指定(3つめ)",
+        "type": 3,
+        "required": False
+    },])
+async def panel_add_role(ctx: SlashContext, url: str, role1: discord.Role, emoji1: str, role2: discord.Role = None, emoji2: str = None, role3: discord.Role = None, emoji3: str = None):
+    if ctx.author.guild_permissions.manage_roles:
+        m = await ctx.send("<a:b_sending:1108227693230702642>処理中…")
+        message_id = extract_message_id(url)
+        channel = ctx.channel
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            await m.edit("指定されたメッセージは見つかりませんでした。")
+            return
+        if message.author.id != client.user:
+            if message.content == "ロールに対応する絵文字にリアクションするとロールを受け取ることができます。":
+                existing_embed = message.embeds[0]
+                if role3:
+                    if emoji3:
+                        if role2:
+                            if emoji2:
+                                fields = [
+                                    {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                                    {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
+                                    {"name": emoji3, "value": f"<@&{role3.id}>", "inline": True},
+                                ]
+                            else:
+                                await m.edit(content="エラー:値「emoji2」が指定されていません。")
+                                return
+                        else:
+                            await m.edit(content="エラー:値「role2」が指定されていません。")
+                            return
+                    else:
+                        await m.edit(content="エラー:値「emoji3」が指定されていません。")
+                        return
+                elif role2:
+                    if emoji2:
+                        fields = [
+                                {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                                {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
+                                ]
+                    else:
+                        await m.edit(content="エラー:値「emoji2」が指定されていません。")
+                        return
+                else:
+                  fields = [
+                      {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                  ]
+
+                for field in fields:
+                    existing_embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
+                    await message.add_reaction(field["name"])
+
+                await message.edit(embed=existing_embed)
+                await m.delete()
+    else: 
+        await ctx.send("ロールの管理権限がないため実行できません。")
+
+@slash.slash(name="panel_remove_role", description="指定した役職を削除します。", options=[
+    {
+        "name":"url",
+        "description":"パネルのメッセージURL",
+        "type": 3,
+        "required": True
+    },
+    {
+        "name":"role",
+        "description":"パネルから削除するロール",
+        "type": 8,
+        "required": True
+    }])
+async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
+    if ctx.author.guild_permissions.manage_roles:
+        m = await ctx.send("<a:b_sending:1108227693230702642>処理中…")
+        message_id = extract_message_id(url)
+        channel = ctx.channel
+        try:
+            message = await channel.fetch_message(message_id)
+        except discord.NotFound:
+            await m.edit(content="指定されたメッセージは見つかりませんでした。")
+            return
+
+        if message.author.id != client.user:
+            if message.content == "ロールに対応する絵文字にリアクションするとロールを受け取ることができます。":
+                embed = message.embeds[0]
+                target_field_name = f"<@&{role.id}>"
+                field_index = None  # 初期化を行う
+                for index, field in enumerate(embed.fields):
+                    if field.value == target_field_name:
+                        emoji_name = field.name
+                        field_index = index
+                        break
+
+                if field_index is not None:
+                    embed.remove_field(field_index)
+                    await message.remove_reaction(emoji_name, client.user)
+                    await message.edit(embed=embed)
+                    await m.delete()
+                else:
+                    await m.edit(content="指定したロールは役職パネルに存在しません。")
+            else:
+                await m.edit(content="指定したメッセージは役職パネルではありません。")
+        else:
+            await m.edit(content="指定されたメッセージはbotのメッセージではないため利用できません。")
+    else:
+        await m.edit(content="ロールの管理権限がないため実行できません。")
+
 #メッセージ送信時
 @client.event
 async def on_message(message):
@@ -343,6 +601,11 @@ async def on_message(message):
       await message.reply(reply)
 
     if message.channel.name in "逆翻訳チャンネル":
+        if message.author.id == 1:
+            if message.reference:
+                return
+            await message.author.send("現在、あなたは「**予期しないBOTの動作を意図的に複数回誘発した**」として、利用制限を受けております。\n制限の詳細については、`anima_zumin_0206`までお願いします。")
+            return
         channelid = message.channel.id
         channel = client.get_channel(channelid)
         is_nsfw = channel.is_nsfw()
@@ -354,9 +617,9 @@ async def on_message(message):
             return
         wait_message = await message.reply("<a:b_sending:1108227693230702642>読み込み中です…\nこの読み込みには数分かかることがあります…。")
         if is_nsfw is False:
-            with open('gomaoil/ward_filter.json', 'r') as f:
+            with open('harine_zumin/ward_filter.json', 'r') as f:
                 ward_f = json.load(f)
-            if message.content in ward_f:
+            if str(ward_f).find(message.content) != -1:
                 await wait_message.edit(content="不適切な単語を検出しました。翻訳を中止します。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
                 return
         while attempt < max_attempts:
@@ -368,7 +631,7 @@ async def on_message(message):
                     await wait_message.edit(content=f"処理中…\nSTEP (1/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated2 = translator.translate(translated1.text, dest='ar')
                     await wait_message.edit(content=f"処理中…\nSTEP (2/5)\nTry ({attempt+1}/{max_attempts-1})")
-                    translated3 = translator.translate(translated2.text, dest='ha')
+                    translated3 = translator.translate(translated2.text, dest='ja')
                     await wait_message.edit(content=f"処理中…\nSTEP (3/5)\nTry ({attempt+1}/{max_attempts-1})")
                     translated4 = translator.translate(translated3.text, dest='sd')
                     await wait_message.edit(content=f"処理中…\nSTEP (4/5)\nTry ({attempt+1}/{max_attempts-1})")
@@ -407,7 +670,7 @@ async def on_message(message):
                         await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
                         #エラーログの処理はここまで
                     else:
-                        e_message = f"最大試行回数に到達しました。処理を中断し、エラー情報を収集しています…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts})"
+                        e_message = f"最大試行回数に到達しました。処理を中断し、エラー情報を収集しています…<a:b_restart:1126125262430552064>"
                         slep = 3
                         #エラーログをハリネズミン！の巣！へ送信する処理
                         channel = client.get_channel(1118756012351029358)
@@ -423,7 +686,7 @@ async def on_message(message):
                 else:
                     #翻訳が正常に終了したときの処理
                     if is_nsfw is False:
-                        if translated11.text in ward_f:
+                        if str(ward_f).find(str(translated11.text)) != -1:
                             await wait_message.edit(content="不適切な翻訳を検出しました。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
                             return
                         else:
@@ -434,13 +697,22 @@ async def on_message(message):
         else:
             embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{e_text}\n```", color=0xff0000)
             embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
+            embed.add_field(name="サポートサーバーに参加してみませんか？", value=f"サポートサーバーではより迅速に対応できます。\n{support_guild}", inline=True)
             embed.timestamp = datetime.datetime.utcnow()
             await wait_message.edit(content="<:b_error:1041554270958387220>transrate is Faild", embed=embed)
+    elif message.channel.id == '1127941083855343636':
+        
+        text = message.content
+        translator = Translator()
+        translated = translator.translate(text, dest='en')
+        await message.reply(translated)
+    else:
+        return
 
 #ボイスチャンネル関連
 @client.event
 async def on_voice_state_update(member, before, after):
-    # 参加した場合
+    # 参��した場合
     if not before.channel and after.channel:
         # ログに出力するメッセージ
         message = f'<@{member.id}>が<#{after.channel.id}>に参加しました。'
@@ -528,7 +800,7 @@ async def on_guild_join(guild):
     system_channel = guild.system_channel
     if system_channel is not None:
         message = "はじめまして！ハリネズミン！です！"
-        embed=discord.Embed(title="ハリネズミン！v2 ", description="ここでは、botの基本的な機能につい��紹介します。\nまたこの内容は</help:1082678201194664117>でもご確認いただけます。", color=0x00ff04)
+        embed=discord.Embed(title="ハリネズミン！v2 ", description="ここでは、botの基本的な機能について軽く紹介します。\nまたこの内容は</help:1082678201194664117>でもご確認いただけます。", color=0x00ff04)
         embed.add_field(name="削除・メッセージ編集ログ機能", value="「削除ログ」という名前のチャンネルを作成すると、メッセージの削除・編集ログが残るようになります。", inline=False)
         embed.add_field(name="ボイスチャンネル入退出ログ機能", value="「ボイスチャンネルログ」という名前のチャンネルを作成すると、サーバー内でボイスチャンネルへの入退出があった場合に通知します。", inline=False)
         embed.add_field(name="サポートサーバーのご案内", value="サポートサーバーでは、製作者に直接お問い合わせすることができます。\n[サポートサーバーに参加](https://discord.gg/pFgBSt6MPX)", inline=False)
@@ -538,6 +810,57 @@ async def on_guild_join(guild):
     embed.set_footer(text=f"GuildID:{guild.id}", icon_url=guild.icon_url)
     embed.timestamp = datetime.datetime.utcnow()
     await channel.send(embed=embed)
+
+#役職パネル用リアクションが追加されたときのイベントハンドラ
+@client.event
+async def on_raw_reaction_add(payload):
+    if payload.user_id == client.user.id:
+        return
+    channel = client.get_channel(payload.channel_id)
+    message = await channel.fetch_message(payload.message_id)
+    try:
+        if message.author.id == client.user.id:
+            if message.content == 'ロールに対応する絵文字にリアクションするとロールを受け取ることができます。':
+                embed = message.embeds[0]
+                fields = embed.fields
+                field_value = None 
+                for field in fields:
+                    if str(field.name) == str(payload.emoji):
+                        field_name = field.name
+                        field_value = field.value
+                        break
+                if field_value is not None:
+                    role_id = ''.join(char for char in field_value if char.isdigit())
+                    guild = client.get_guild(payload.guild_id)
+                    role = guild.get_role(int(role_id))
+                    member = payload.member
+                    if role in member.roles:
+                        emoji = payload.emoji
+                        await message.remove_reaction(emoji, member)
+                        await member.remove_roles(role)
+                        channel = client.get_channel(payload.channel_id)
+                        embed = discord.Embed(description=f"ロール<@&{role_id}>を解除しました。")
+                        m = await channel.send(f"<@{payload.user_id}>", embed=embed)
+                        await asyncio.sleep(5)
+                        await m.delete()
+                    else:
+                        emoji = payload.emoji
+                        await message.remove_reaction(emoji, member)
+                        await member.add_roles(role)
+                        channel = client.get_channel(payload.channel_id)
+                        embed = discord.Embed(description=f"ロール<@&{role_id}>を付与しました。")
+                        m = await channel.send(f"<@{payload.user_id}>", embed=embed)
+                        await asyncio.sleep(5)
+                        await m.delete()
+                else:
+                    member = payload.member
+                    emoji = payload.emoji
+                    await message.remove_reaction(emoji, member)
+    except:
+        embed=discord.Embed(description="ロールの付与でエラーが発生しました。\n一時的なエラーの可能性もありますので再度お試しください。")
+        m = await channel.send(f"<@{payload.user_id}>", embed=embed)
+        await asyncio.sleep(5)
+        await m.delete()
 
 #起動時処理
 @client.event
@@ -550,5 +873,4 @@ async def on_ready():
     print(discord.__version__)  # discord.pyのバージョン
     print('------')
 
-
-client.run('TOKEN here')
+client.run(TOKEN)
