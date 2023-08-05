@@ -24,8 +24,8 @@ Intents.reactions = True
 Intents.guilds = True
 bot = commands.Bot(command_prefix='z!', intents=Intents)
 client = discord.Client(intents=Intents) 
-#slash = SlashCommand(client, sync_commands=True)
-slash = SlashCommand(client, sync_commands=False)
+slash = SlashCommand(client, sync_commands=True)
+#slash = SlashCommand(client, sync_commands=False)
 
 #その他の変数
 semaphore = threading.BoundedSemaphore(value=2)
@@ -439,7 +439,7 @@ async def panel_edit(ctx: SlashContext, url: str, title: str):
     else:
         await ctx.send("ロールの管理権限を持っていないため実行できません。")
 
-@slash.slash(name="panel_add_role", description="役職パネルにロールを追加します(一度につき最大3つまで同時追加が可能です。)", options=[
+@slash.slash(name="panel_add_role", description="役職パネルにロールを追加します(一度につき最大5つまで同時追加が可能です。)", options=[
     {
         "name":"url",
         "description":"役職を追加するパネルのメッセージURLを入力してください。",
@@ -470,7 +470,7 @@ async def panel_edit(ctx: SlashContext, url: str, title: str):
         "type": 3,
         "required": False
     },
-        {
+    {
         "name":"role3",
         "description":"追加する役職を入力(3つめ)",
         "type": 8,
@@ -481,8 +481,32 @@ async def panel_edit(ctx: SlashContext, url: str, title: str):
         "description":"役職に追加する絵文字を指定(3つめ)",
         "type": 3,
         "required": False
+    },
+        {
+        "name":"role4",
+        "description":"追加する役職を入力(4つめ)",
+        "type": 8,
+        "required": False
+    },
+    {
+        "name":"emoji4",
+        "description":"役職に追加する絵文字を指定(4つめ)",
+        "type": 3,
+        "required": False
+    },
+        {
+        "name":"role5",
+        "description":"追加する役職を入力(5つめ)",
+        "type": 8,
+        "required": False
+    },
+    {
+        "name":"emoji5",
+        "description":"役職に追加する絵文字を指定(5つめ)",
+        "type": 3,
+        "required": False
     },])
-async def panel_add_role(ctx: SlashContext, url: str, role1: discord.Role, emoji1: str, role2: discord.Role = None, emoji2: str = None, role3: discord.Role = None, emoji3: str = None):
+async def panel_add_role(ctx: SlashContext, url: str, role1: discord.Role, emoji1: str, role2: discord.Role = None, emoji2: str = None, role3: discord.Role = None, emoji3: str = None, role4: discord.Role = None, emoji4: str = None, role5: discord.Role = None, emoji5: str =None):
     if ctx.author.guild_permissions.manage_roles:
         m = await ctx.send("<a:b_sending:1108227693230702642>処理中…")
         message_id = extract_message_id(url)
@@ -495,44 +519,45 @@ async def panel_add_role(ctx: SlashContext, url: str, role1: discord.Role, emoji
         if message.author.id != client.user:
             if message.content == "ロールに対応する絵文字にリアクションするとロールを受け取ることができます。":
                 existing_embed = message.embeds[0]
-                if role3:
-                    if emoji3:
-                        if role2:
-                            if emoji2:
-                                fields = [
-                                    {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
-                                    {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
-                                    {"name": emoji3, "value": f"<@&{role3.id}>", "inline": True},
-                                ]
-                            else:
-                                await m.edit(content="エラー:値「emoji2」が指定されていません。")
-                                return
-                        else:
-                            await m.edit(content="エラー:値「role2」が指定されていません。")
-                            return
-                    else:
-                        await m.edit(content="エラー:値「emoji3」が指定されていません。")
-                        return
-                elif role2:
-                    if emoji2:
-                        fields = [
-                                {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
-                                {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
-                                ]
-                    else:
-                        await m.edit(content="エラー:値「emoji2」が指定されていません。")
-                        return
+                if role5 and emoji5 and role4 and emoji4 and role3 and emoji3 and role2 and emoji2 and emoji1 and role1:
+                    fields = [
+                        {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                        {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
+                        {"name": emoji3, "value": f"<@&{role3.id}>", "inline": True},
+                        {"name": emoji4, "value": f"<@&{role4.id}>", "inline": True},
+                        {"name": emoji5, "value": f"<@&{role5.id}>", "inline": True},
+                            ]
+                if role4 and emoji4 and role3 and emoji3 and role2 and emoji2 and emoji1 and role1:
+                    fields = [
+                        {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                        {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
+                        {"name": emoji3, "value": f"<@&{role3.id}>", "inline": True},
+                        {"name": emoji4, "value": f"<@&{role4.id}>", "inline": True},
+                            ]
+                elif role3 and emoji3 and role2 and emoji2 and emoji1 and role1:
+                    fields = [
+                        {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                        {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
+                        {"name": emoji3, "value": f"<@&{role3.id}>", "inline": True},
+                            ]
+                elif role2 and emoji2 and role1 and emoji1:
+                    fields = [
+                        {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
+                        {"name": emoji2, "value": f"<@&{role2.id}>", "inline": True},
+                            ]
                 else:
                   fields = [
                       {"name": emoji1, "value": f"<@&{role1.id}>", "inline": True},
                   ]
-
+            try:
                 for field in fields:
                     existing_embed.add_field(name=field["name"], value=field["value"], inline=field["inline"])
                     await message.add_reaction(field["name"])
 
                 await message.edit(embed=existing_embed)
                 await m.delete()
+            except:
+                await m.edit(content="エラーが発生しました。\n引数不足もしくは、絵文字が利用不可のサーバーで作成されたものです。")
     else: 
         await ctx.send("ロールの管理権限がないため実行できません。")
 
@@ -560,7 +585,7 @@ async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
             await m.edit(content="指定されたメッセージは見つかりませんでした。")
             return
 
-        if message.author.id != client.user:
+        if message.author.id == client.user:
             if message.content == "ロールに対応する絵文字にリアクションするとロールを受け取ることができます。":
                 embed = message.embeds[0]
                 target_field_name = f"<@&{role.id}>"
@@ -577,13 +602,13 @@ async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
                     await message.edit(embed=embed)
                     await m.delete()
                 else:
-                    await m.edit(content="指定したロールは役職パネルに存在しません。")
+                    await m.edit(content="指���されたロールは役職パネルに存在しません。")
             else:
                 await m.edit(content="指定したメッセージは役職パネルではありません。")
         else:
             await m.edit(content="指定されたメッセージはbotのメッセージではないため利用できません。")
     else:
-        await m.edit(content="ロールの管理権限がないため実行できません。")
+        await ctx.send(content="ロールの管理権限がないため実行できません。")
 
 #メッセージ送信時
 @client.event
@@ -856,11 +881,14 @@ async def on_raw_reaction_add(payload):
                     member = payload.member
                     emoji = payload.emoji
                     await message.remove_reaction(emoji, member)
-    except:
-        embed=discord.Embed(description="ロールの付与でエラーが発生しました。\n一時的なエラーの可能性もありますので再度お試しください。")
+    except Exception as e:
+        embed=discord.Embed(description="ロールの付与でエラーが発生しました。\n付与しようとしたロールがbotよりも順位が高いもしくは、アプリケーションに関連付けられたロールの可能性があります。")
         m = await channel.send(f"<@{payload.user_id}>", embed=embed)
         await asyncio.sleep(5)
         await m.delete()
+        channel = client.get_channel(1118756012351029358)
+        embed=discord.Embed(title="例外処理エラー(役職パネル)", description=f"詳細:\n```\n{str(e)}```\n")
+        await channel.send(embed=embed)
 
 #起動時処理
 @client.event
