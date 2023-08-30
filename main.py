@@ -9,21 +9,21 @@ import platform
 import sys
 import json
 import threading
-import gomashio
+import ffmpeg
 import animalotta_sim
 from discord_slash import SlashCommand, SlashContext
 from discord_slash.utils.manage_commands import create_option
-from discord.ext import commands
+from discord_buttons_plugin import *
 from googletrans import Translator
 
 #discord関連の変数
 Intents = discord.Intents.default()
 Intents.members = True
 Intents.voice_states = True
+Intents.presences = True
 Intents.reactions = True
 Intents.guilds = True
-bot = commands.Bot(command_prefix='z!', intents=Intents)
-client = discord.Client(intents=Intents) 
+client = discord.Client(intents=Intents)
 slash = SlashCommand(client, sync_commands=True)
 #slash = SlashCommand(client, sync_commands=False)
 
@@ -385,12 +385,21 @@ async def purge_message(ctx: SlashContext, about: int):
         "description":"ロールの絵文字を追加します。",
         "type":3,
         "required": True
+    },
+    {
+        "name":"color",
+        "description":"役職パネルの色を指定します(16進数で指定してください。)",
+        "type": 3,
+        "required": False
     }
     ])
-async def panel_create(ctx: SlashContext, role: discord.Role, panel_title: str, emoji: str):
+async def panel_create(ctx: SlashContext, role: discord.Role, panel_title: str, emoji: str, color: str = None):
     if ctx.author.guild_permissions.manage_roles:
         m = await ctx.channel.send('<a:b_sending:1108227693230702642>役職パネルを作成しています………')
-        embed = discord.Embed(title=panel_title)
+        if color is not None:
+            embed = discord.Embed(title=panel_title, color=int(color, 16))
+        else:
+            embed = discord.Embed(title=panel_title)
         embed.add_field(name=emoji, value=f"<@&{role.id}>", inline=True)
         embed.set_footer(text=f'最終更新者:{ctx.author.name}')
         await m.add_reaction(f'{emoji}')
@@ -412,10 +421,16 @@ async def panel_create(ctx: SlashContext, role: discord.Role, panel_title: str, 
         "name":"title",
         "description":"パネルのタイトルを編集できます。",
         "type": 3,
-        "required": True
+        "required": False
+    },
+    {
+        "name":"color",
+        "description":"役職パネルの色を指定します(16進数で指定してください。)",
+        "type": 3,
+        "required": False
     }
     ])
-async def panel_edit(ctx: SlashContext, url: str, title: str):
+async def panel_edit(ctx: SlashContext, url: str, title: str = None, color: str = None):
     if ctx.author.guild_permissions.manage_roles:
         message_id = extract_message_id(url)
         channel = ctx.channel
@@ -427,7 +442,13 @@ async def panel_edit(ctx: SlashContext, url: str, title: str):
         if message.author.id != client.user:
             if message.content == "ロールに対応する絵文字にリアクションするとロールを受け取ることができます。":
                 existing_embed = message.embeds[0]
-                existing_embed.title = title
+                if title is not None and color is not None:
+                    existing_embed.title = title
+                    existing_embed.color = discord.Color(int(color, 16))
+                elif title is not None:
+                    existing_embed.title = title
+                else:
+                    existing_embed.color = discord.Color(int(color, 16))
                 await message.edit(embed=existing_embed)
                 m = await ctx.send("変更が完了しました。")
                 await asyncio.sleep(5)
@@ -602,7 +623,7 @@ async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
                     await message.edit(embed=embed)
                     await m.delete()
                 else:
-                    await m.edit(content="指���されたロールは役職パネルに存在しません。")
+                    await m.edit(content="指定されたロールは役職パネルに存在しません。")
             else:
                 await m.edit(content="指定したメッセージは役職パネルではありません。")
         else:
@@ -610,6 +631,22 @@ async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
     else:
         await ctx.send(content="ロールの管理権限がないため実行できません。")
 
+@slash.slash(name="afk_set",description="AFKチャンネルに移動したユーザーに通知を送信するか設定できます。")
+async def afk_set(ctx: SlashContext):
+    if ctx.author.guild_permissions.manage_roles:
+        with open('harine_zumin/settings.json', 'r') as f:
+            data = json.load(f)
+        guild = ctx.guild.id
+        if guild in data:
+            await ctx.send("設定は既に`True`です。")
+            return
+        data.append(guild)
+        with open('harine_zumin/settings.json', 'w') as f:
+            json.dump(data, f)
+        await ctx.send("設定が完了しました。")
+    else:
+        await ctx.send("この操作には管理者権限が必要になります！")
+    
 #メッセージ送信時
 @client.event
 async def on_message(message):
@@ -699,7 +736,7 @@ async def on_message(message):
                         slep = 3
                         #エラーログをハリネズミン！の巣！へ送信する処理
                         channel = client.get_channel(1118756012351029358)
-                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳�����������������:\n```\n{str(e)}\n```", color=0xff0000)
                         embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
                         embed.timestamp = datetime.datetime.utcnow()
                         await channel.send(content=f"逆翻訳機能のエラー\n処理に失敗しました。", embed=embed)
@@ -715,9 +752,13 @@ async def on_message(message):
                             await wait_message.edit(content="不適切な翻訳を検出しました。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
                             return
                         else:
-                            await wait_message.edit(content=translated11.text)
+                            embed=discord.Embed(color=0x05c5f5)
+                            embed.set_author(name=message.author.name, icon_url=f"https://media.discordapp.net/avatars/{message.author.id}/{message.author.avatar}.png?size=1024")
+                            await wait_message.edit(content=translated11.text, embed=embed)
                     else:
-                        await wait_message.edit(content=translated11.text)
+                        embed=discord.Embed(color=0x05c5f5)
+                        embed.set_author(name=message.author.name, icon_url=f"https://media.discordapp.net/avatars/{message.author.id}/{message.author.avatar}.png?size=1024")
+                        await wait_message.edit(content=translated11.text, embed=embed)
                     break
         else:
             embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{e_text}\n```", color=0xff0000)
@@ -737,7 +778,10 @@ async def on_message(message):
 #ボイスチャンネル関連
 @client.event
 async def on_voice_state_update(member, before, after):
-    # 参��した場合
+    #ミュートとかで呼び出されたときに重複を回避するための条件分岐
+    if after.deaf != before.deaf or after.mute != before.mute or after.self_deaf != before.self_deaf or after.self_mute != before.self_mute:
+        return
+    # 参加した場合
     if not before.channel and after.channel:
         # ログに出力するメッセージ
         message = f'<@{member.id}>が<#{after.channel.id}>に参加しました。'
@@ -776,7 +820,32 @@ async def on_voice_state_update(member, before, after):
         if channel is not None:
             # ログをテキストチャンネルに送信
             await channel.send(embed=embed)
-            return
+    if after.afk is not False:
+        embed=discord.Embed(title="寝落ち通知", description=f"あなたは、「{member.guild.name}」でAFKチャンネルに移動されました。", color=int('adff2f', 16))
+        embed.timestamp = datetime.datetime.utcnow()
+        await member.send(embed=embed)
+    if after.self_stream is True:
+        send_message = discord.utils.get(member.guild.text_channels, name='ボイスチャンネルログ')
+        embed=discord.Embed(title="Go Live Stream", description="Activityの詳細",color=int('ffa500', 16))
+        if str(member.mobile_status) != 'offline':
+            user_client = "📱モバイルクライアント"
+        elif str(member.desktop_status) != 'offline':
+	        user_client = "🖥デスクトップクライアント"
+        elif str(member.web_status) != 'offline':
+	        user_client = "🌐ブラウザクライアント"
+        else:
+	        user_client = "❓不明なクライアント"
+        if member.activity is not None:
+            game_name = member.activity.name
+            game_state = member.activity.state
+            embed.add_field(name="プレイ中のゲーム", value=game_name, inline=False)
+            embed.add_field(name="ゲームのステータス", value=game_state, inline=True)
+        else:
+	        embed.add_field(name="プレイ中のゲーム", value="Activityの情報はありませんでした。", inline=False)
+        embed.add_field(name="ユーザーのクライアント", value=user_client, inline=False)
+        embed.set_author(name=f"{member.name}", icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
+        embed.timestamp = datetime.datetime.utcnow()
+        await send_message.send(embed=embed)
 
 #メッセージ削除
 @client.event
@@ -841,8 +910,11 @@ async def on_guild_join(guild):
 async def on_raw_reaction_add(payload):
     if payload.user_id == client.user.id:
         return
-    channel = client.get_channel(payload.channel_id)
-    message = await channel.fetch_message(payload.message_id)
+    try:
+        channel = client.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+    except:
+        pass
     try:
         if message.author.id == client.user.id:
             if message.content == 'ロールに対応する絵文字にリアクションするとロールを受け取ることができます。':
@@ -901,4 +973,4 @@ async def on_ready():
     print(discord.__version__)  # discord.pyのバージョン
     print('------')
 
-client.run(TOKEN)
+client.run('YOUR TOKEN')
