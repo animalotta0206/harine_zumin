@@ -9,23 +9,17 @@ import platform
 import sys
 import json
 import threading
-import ffmpeg
 import animalotta_sim
-from discord_slash import SlashCommand, SlashContext
-from discord_slash.utils.manage_commands import create_option
+from discord import app_commands
 from discord_buttons_plugin import *
 from googletrans import Translator
 
 #discord関連の変数
-Intents = discord.Intents.default()
-Intents.members = True
-Intents.voice_states = True
-Intents.presences = True
-Intents.reactions = True
-Intents.guilds = True
+Intents = discord.Intents.all()
 client = discord.Client(intents=Intents)
-slash = SlashCommand(client, sync_commands=True)
-#slash = SlashCommand(client, sync_commands=False)
+tree = app_commands.CommandTree(client)
+#コマンド同期の設定
+sync_command = False
 
 #その他の変数
 semaphore = threading.BoundedSemaphore(value=2)
@@ -43,43 +37,56 @@ def extract_message_id(url):
         return message_id
     else:
         return None
+    
+#コンテキストメニューのテスト
+@tree.context_menu()
+async def user_info(interaction: discord.Interaction, member: discord.Member):
+    embed=discord.Embed(color=member.color)
+    embed.set_author(name=member.name)
+    embed.set_thumbnail(url=member.avatar.url)
+    embed.add_field(name='アカウント登録日', value=member.created_at, inline=True)
+    embed.add_field(name='サーバー参加日時', value=member.joined_at, inline=True)
+    embed.add_field(name='サーバーブースト開始日', value=member.premium_since, inline=True)
+    embed.add_field(name='アカウントがSPAMとして認証されているか', value=f'`{member.public_flags.spammer}`', inline=True)
+    embed.add_field(name='BOTアカウントとしてフラグされているか', value=f'`{member.bot}`', inline=True)
+    await interaction.response.send_message(embed=embed)
 
 #スラッシュコマンド
-@slash.slash(name="help", description="botのヘルプを表示します")
-async def help(ctx: SlashContext):
+@tree.command(name="help", description="botのヘルプを表示します")
+async def help(ctx: discord.Interaction):
     embed=discord.Embed(title="ハリネズミン！v2 (β2)", description="ハリネズミン！v2(β2)は、現在試験的に稼働中のbotです。\r基本的にこのbotはスラッシュコマンドからの動作になります。",color=0x00ff00)
     embed.add_field(name="削除・メッセージ編集ログ機能", value="「削除ログ」という名前のチャンネルを作成すると、メッセージの削除・編集ログが残るようになります。", inline=False)
     embed.add_field(name="ボイスチャンネル入退出ログ機能", value="「ボイスチャンネルログ」という名前のチャンネルを作成すると、サーバー内でボイスチャンネルへの入退出があった場合に通知します。", inline=False)
     embed.add_field(name="サポートサーバーのご案内", value="サポートサーバーでは、製作者に直接お問い合わせすることができます。\n[サポートサーバーに参加](https://discord.gg/pFgBSt6MPX)", inline=False)
     embed.add_field(name="git hubリポジトリ", value="ハリネズミン！v2のコードを見ることができます。\n[リポジトリを見る](https://github.com/animalotta0206/harine_zumin/)", inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
 
-@slash.slash(name="taiman", description="怠慢やね画像を送信します。")
-async def taiman(ctx: SlashContext):
+@tree.command(name="taiman", description="怠慢やね画像を送信します。")
+async def taiman(ctx: discord.Interaction):
     embed = discord.Embed(title="怠慢やね😅",color=0x04ff00)
     embed.set_image(url="https://cdn.discordapp.com/attachments/992091661519827074/992091785331490826/20210726_212048.jpg")
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
 
-@slash.slash(name="bareta", description="ばれたかを送信します。")
-async def bareta(ctx: SlashContext):
+@tree.command(name="bareta", description="ばれたかを送信します。")
+async def bareta(ctx: discord.Interaction):
     embed = discord.Embed(title="バレたか😆",color=0x04ff00)
     embed.set_image(url="https://cdn.discordapp.com/attachments/992091661519827074/992091784761053240/20210726_212042.jpg")
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
     
-@slash.slash(name="tweet", description="ツイートを参考にしない😅")
-async def tweet(ctx: SlashContext):
+@tree.command(name="tweet", description="ツイートを参考にしない😅")
+async def tweet(ctx: discord.Interaction):
     embed = discord.Embed(title="ツイートを参考にしない😅",color=0x04ff00)
     embed.set_image(url="https://cdn.discordapp.com/attachments/992091661519827074/992091784521990164/20210726_212045.jpg")
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
     
-@slash.slash(name="goodnight", description="おやすみなさい画像を送信します。")
-async def goodnight(ctx: SlashContext):
+@tree.command(name="goodnight", description="おやすみなさい画像を送信します。")
+async def goodnight(ctx: discord.Interaction):
     embed = discord.Embed(title="おやすみなさい😴",color=0x04ff00)
     embed.set_image(url="https://cdn.discordapp.com/attachments/992091661519827074/992091785117585448/20210726_212039.jpg")
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
     
-@slash.slash(name="omikuji", description="おみくじが引けます。不正できます。")
-async def omikuji(ctx: SlashContext):
+@tree.command(name="omikuji", description="おみくじが引けます。不正できます。")
+async def omikuji(ctx: discord.Interaction):
      texts = [ #ランダムで返す文字列
       '大吉！すごいズミン！',
       '中吉！がんばったズミン！',
@@ -94,208 +101,20 @@ async def omikuji(ctx: SlashContext):
       ]
      index = random.randint(0, len(texts) - 1)
      text = texts[index]
-     await ctx.send(text)
+     await ctx.response.send_message(text)
 
-@slash.slash(name="number_game_easy", description="数当てゲームができます。成功率は1/100です。")
-async def number_game_easy(ctx: SlashContext):
-    answer = random.randint(1, 100)
-    i = 0
-
-    await ctx.send("数当てゲーム！\n1〜100の範囲の数字を当ててみましょう！\n続行するには1〜100の範囲で数字を送信してください。")
-
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-    while True:
-        try:
-            message = await client.wait_for('message', check=check, timeout=30)  # メッセージの受け取り待機
-            guess = int(message.content)
-            if guess == answer:
-                i += 1
-                if i == 1:
-                    rank = "数当てゲーム神"
-                elif i <= 5:
-                    rank = "数当てゲーム上級者"
-                elif i <= 10:
-                    rank = "数当てゲーム中級者"
-                elif i <= 15:
-                    rank = "数当てゲーム初級者"
-                else:
-                    rank = "数当てゲーム超初心者"
-                await ctx.send(f"<@{message.author.id}>\n正解です！試行回数は{i}回でした！\n称号:「{rank}」")
-                break
-            elif guess >= 101:
-                await ctx.send(f"<@{message.author.id}>\n100以下の数字で回答してください！")
-            elif guess > answer:
-                i += 1
-                await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも小さい数です！")
-            else:
-                i += 1
-                await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも大きい数です！")
-        except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください。")
-            break
-        except Exception as e:
-            embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
-            await ctx.send(f"<@{message.author.id}>\nエラーが発生しました。\nもう一度やり直してください。", embed=embed)
-            break
-
-@slash.slash(name="number_game_hard", description="(1発モード)数当てゲームができます。成功率は1/100です。")
-async def number_game_hard(ctx: SlashContext):
-    answer = random.randint(1, 100)
-
-    await ctx.send("数当てゲーム！「一発勝負モード」\n1〜100の範囲の数字を当ててみましょう！チャンスは1回限り！\n続行するには1〜100の範囲で数字を送信してください。")
-
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-    while True:
-        try:
-            message = await client.wait_for('message', check=check, timeout=30)  # メッセージの受け取り待機
-            guess = int(message.content)
-            if guess == answer:
-                await ctx.send(f"<@{message.author.id}>正解です！おめでとうございます！")
-                break
-            else:
-                await ctx.send(f"<@{message.author.id}>残念！不正解！\n今回の正解は「{answer}」でした。")
-                break
-        except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>タイムアウトしました。もう一度やり直してください。")
-            break
-        except Exception as e:
-            embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
-            await ctx.send(f"<@{message.author.id}>\nエラーが発生しました。\nもう一度やり直してください。", embed=embed)
-            break
-
-@slash.slash(name="number_game_expert", description="数当てゲームができます(難易度エキスパート)。成功率は1/1000です。")
-async def number_game_expert(ctx: SlashContext):
-    answer = random.randint(1, 1000)
-    i = 0
-
-    await ctx.send("数当てゲーム！\n1〜1000の範囲の数字を当ててみましょう！\n続行するには1〜1000の範囲で数字を送信してください。")
-
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-    while True:
-        try:
-            message = await client.wait_for('message', check=check, timeout=30)  # メッセージの受け取り待機
-            guess = int(message.content)
-            if guess == answer:
-                i += 1
-                if i == 1:
-                    rank = "数当てゲームを極めし神-Legend of number-"
-                elif i <= 10:
-                    rank = "ド派手に数当てゲームになってみた！"
-                elif i <= 20:
-                    rank = "下積み時代辛い時も、諦めそうな時も、数当てゲームをやればすぐ元気になれた。"
-                elif i <= 50:
-                    rank = "数当てゲーム先生"
-                else:
-                    rank = "数当てゲーム凡人"
-                await ctx.send(f"<@{message.author.id}>\n正解です！試行回数は{i}回でした！\n称号:「{rank}」")
-                break
-            elif guess >= 1001:
-                await ctx.send(f"<@{message.author.id}>\n100以下の数字で回答してください！")
-            elif guess > answer:
-                i += 1
-                await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも小さい数です！")
-            else:
-                i += 1
-                await ctx.send(f"<@{message.author.id}>\n残念！\nヒントはこれよりも大きい数です！")
-        except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください。")
-            break
-        except Exception as e:
-            embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
-            await ctx.send(f"<@{message.author.id}>\nエラーが発生しました。\nもう一度やり直してください。", embed=embed)
-            break
-
-@slash.slash(name="number_game_Worlds_end", description="数当てゲームができます。成功率は1/1000です。答えるたびに回答が変わります。")
-async def number_game_Worlds_end(ctx: SlashContext):
-    i = 0
-
-    await ctx.send("数当てゲーム！(難易度MAX)\n1〜1000の範囲の数字を当ててみましょう！\n毎回答えが変わる鬼畜仕様となっております。")
-
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-    while True:
-        try:
-            answer = random.randint(1, 1000)
-            message = await client.wait_for('message', check=check, timeout=30)  # メッセージの受け取り待機
-            guess = int(message.content)
-            if guess == answer:
-                i += 1
-                if i == 1:
-                    rank = "もしかしたら超能力者の才能が自分にはあるのかもしれない…"
-                elif i <= 10:
-                    rank = "1/1000なんてちょろかった"
-                elif i <= 50:
-                    rank = "確率の収束ッ！"
-                elif i <= 100:
-                    rank = "試行回数って大事"
-                elif i <= 200:
-                    rank = "変数`answer`君…どうして君はそんなに動きたがるんだ…！じっとしてくれ！！！"
-                elif i <= 350:
-                    rank = "```py\nanswer = random.randint(1, 1000)\nmessage = await client.wait_for('message', check=check, timeout=30)\nguess = int(message.content)\n```"
-                else:
-                    rank = f"ここまで長かった…"
-                await ctx.send(f"<@{message.author.id}>\n正解です！試行回数は{i}回でした！\n称号:「{rank}」")
-                break
-            elif guess >= 1001:
-                await ctx.send(f"<@{message.author.id}>\n1000以下の数字で回答してください！")
-            elif guess > answer:
-                i += 1
-                await ctx.send(f"<@{message.author.id}>\n残念！\n答えが変わりました！")
-            else:
-                i += 1
-                await ctx.send(f"<@{message.author.id}>\n残念！\n答えが変わりました！")
-        except asyncio.TimeoutError:
-            await ctx.send(f"<@{message.author.id}>\nタイムアウトしました。もう一度やり直してください。")
-            break
-        except Exception as e:
-            embed=discord.Embed(description=f"エラー出力\n```\n{str(e)}\n```", color=0xff0000)
-            await ctx.send(f"<@{message.author.id}>\nエラーが発生しました。\nもう一度やり直してください。", embed=embed)
-            break
-     
-@slash.slash(name="ping",description="botの反応速度を測定できます。")
-async def ping(ctx: SlashContext):
+@tree.command(name="ping",description="botの反応速度を測定できます。")
+async def ping(ctx: discord.Interaction):
     # Ping値を秒単位で取得
     raw_ping = client.latency
     # ミリ秒に変換して丸める
     ping = round(raw_ping * 1000)
     embed=discord.Embed(title="Ping!", color=0x00ff00)
     embed.add_field(name="Pong!🏓", value=f'{ping}ms', inline=False)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
     
-@slash.slash(name="reminder_set", description="指定した時刻に、指定したメッセージを予約送信することができます。", options=[
-    {
-        "name": "time",
-        "description": "2023-01-01 12:00の24時間形式で指定してください。",
-        "type": 3,
-        "required": True
-    },
-    {
-        "name": "message",
-        "description": "予約送信したい文章を入力してください。(改行不可)",
-        "type": 3,
-        "required": True
-    }
-])
-async def reminder_set(ctx: SlashContext, time: str, message: str):
-    
-    jst = pytz.timezone('Asia/Tokyo')
-    target_time = datetime.datetime.strptime(time, '%Y-%m-%d %H:%M')
-    target_time = jst.localize(target_time)
-    now = datetime.datetime.now(jst)
-    await ctx.send("送信予約が完了しました！")
-    sleep_time = (target_time - now).total_seconds()
-    await discord.utils.sleep_until(target_time)
-    await ctx.channel.send(message)
-    
-@slash.slash(name="bot_info",description="botの情報を表示します。")
-async def bot_info(ctx: SlashContext):
+@tree.command(name="bot_info",description="botの情報を表示します。")
+async def bot_info(ctx: discord.Interaction):
 
     num_of_servers = len(client.guilds)
 
@@ -305,10 +124,10 @@ async def bot_info(ctx: SlashContext):
     embed.add_field(name="OS:", value=f"{platform.system()}\n{platform.release()}\n{platform.version()}", inline=True)
     embed.add_field(name="プロセッサー情報:", value=platform.processor(), inline=True)
     embed.add_field(name="所属しているサーバーの数:", value=num_of_servers, inline=True)
-    await ctx.send(embed=embed)
-    
-@slash.slash(name="userinfo", description="ユーザー情報を取得します")
-async def userinfo(ctx: SlashContext, member: discord.Member):
+    await ctx.response.send_message(embed=embed)
+
+@tree.command(name="userinfo", description="ユーザー情報を取得します")
+async def userinfo(ctx: discord.Interaction, member: discord.Member):
     embed = discord.Embed(title="ユーザー情報", description=member.mention, color=member.color)
     embed.add_field(name="ユーザー名", value=member.name, inline=True)
     embed.add_field(name="ニックネーム", value=member.nick, inline=True)
@@ -316,11 +135,11 @@ async def userinfo(ctx: SlashContext, member: discord.Member):
     embed.add_field(name="サーバー参加日時", value=member.joined_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
     embed.add_field(name="アカウント作成日時", value=member.created_at.strftime("%Y-%m-%d %H:%M:%S"), inline=True)
     embed.set_thumbnail(url=member.avatar_url)
-    await ctx.send(embed=embed)
+    await ctx.response.send_message(embed=embed)
 
-@slash.slash(name="usercheck", description="ユーザ識別子から一意の文字列に変更されているかを確認できます。")
-async def usercheck(ctx: SlashContext):
-    original_response = await ctx.send("<a:b_sending:1108227693230702642>読み込み中です…")
+@tree.command(name="usercheck", description="ユーザ識別子から一意の文字列に変更されているかを確認できます。")
+async def usercheck(ctx: discord.Interaction):
+    original_response = await ctx.response.send_message("<a:b_sending:1108227693230702642>読み込み中です…")
     guild = client.get_guild(ctx.guild.id)  # サーバーIDを指定
     edit_id = 0
     noedit_id = 0
@@ -338,12 +157,12 @@ async def usercheck(ctx: SlashContext):
     embed.add_field(name="識別子変更がまだのユーザ数", value=f"{noedit_id}", inline=True)
     await original_response.edit(content="<:b_check:1043897762590236704>読み込みが完了しました。", embed=embed)
 
-@slash.slash(name="share_discord_profile", description="あなたのDiscordプロフィールをほかのSNSで簡単に共有できるURLを生成します。")
-async def share_discord_profile(ctx: SlashContext):
-    await ctx.send(f"{ctx.author.mention}のDiscordプロフィールリンクはこちらです。\nhttps://discord.com/users/{ctx.author.id}")
+@tree.command(name="share_discord_profile", description="あなたのDiscordプロフィールをほかのSNSで簡単に共有できるURLを生成します。")
+async def share_discord_profile(ctx: discord.Interaction):
+    await ctx.response.send_message(f"{ctx.author.mention}のDiscordプロフィールリンクはこちらです。\nhttps://discord.com/users/{ctx.author.id}")
 
-@slash.slash(name="purge_message", description="最大2000件までのメッセージを削除できます。",)
-async def purge_message(ctx: SlashContext, about: int):
+@tree.command(name="purge_message", description="最大2000件までのメッセージを削除できます。",)
+async def purge_message(ctx: discord.Interaction, about: int):
     if ctx.author.guild_permissions.manage_messages:
         if about >= 2001:
             await ctx.send('メッセージの削除は2000件までに制限されています。')
@@ -351,49 +170,25 @@ async def purge_message(ctx: SlashContext, about: int):
         try:
             target_channel = client.get_channel(ctx.channel.id)
             if about >= 500:
-                w_message = await ctx.send(f'<a:b_sending:1108227693230702642>{about}件のメッセージを削除しています………\n>>> この処理には数分かかることがあります。\nこれ以降のメッセージは削除対象になりませんので、いつも通りチャットをすることができます。')    
+                w_message = await ctx.response.send_message(f'<a:b_sending:1108227693230702642>{about}件のメッセージを削除しています………\n>>> この処理には数分かかることがあ��ます。\nこれ以降のメッセージは削除対象になりませんので、いつも通りチャットをすることができます。')    
             else:
-                w_message = await ctx.send(f'<a:b_sending:1108227693230702642>{about}件のメッセージを削除しています………')
+                w_message = await ctx.response.send_message(f'<a:b_sending:1108227693230702642>{about}件のメッセージを削除しています………')
             deleted = await target_channel.purge(limit=about, before=discord.Object(id=w_message.id), bulk=bool(True))
             await w_message.edit(content=f'<:b_check:1043897762590236704>{len(deleted)}件のメッセージを削除しました。')
         except discord.Forbidden:
             await w_message.edit(content="Botに「メッセージの管理権限」がありません。\nBotの「メッセージの管理権限」を有効化してください。")
         except discord.HTTPException as e:
-            embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
+            embed=discord.Embed(description=f"例外処理されていないエラーが詳細:\n```\n{str(e)}\n```", color=0xff0000)
             embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
             embed.add_field(name="サポートサーバーに参加してみませんか？", value=f"サポートサーバーではより迅速に対応できます。\n{support_guild}", inline=True)
             embed.timestamp = datetime.datetime.utcnow()
-            await ctx.send(content=f'エラーが発生しました。\nここまで{len(deleted)}件のメッセージを削除しました。', embed=embed)
+            await ctx.response.send_message(content=f'エラーが発生しました。\nここまで{len(deleted)}件のメッセージを削除しました。', embed=embed)
     else:
-        await ctx.send(f"コマンド実行者に「メッセージの管理権限」が無いため、リクエストは拒否されました。")
+        await ctx.response.send_message(f"コマンド実行者に「メッセージの管理権限」が無いため、リクエストは拒否されました。")
 
-@slash.slash(name='panel_create', description='役職パネルを作成します。', options=[
-    {
-      "name":'role',
-      "description":"役職パネルに追加するロールを指定してください。",
-      "type": 8,
-      "required": True
-    },
-    {
-        "name":'panel_title',
-        "description":'パネルのタイトルを指定できます。',
-        "type": 3,
-        "required": True
-    },
-    {
-        "name":'emoji',
-        "description":"ロールの絵文字を追加します。",
-        "type":3,
-        "required": True
-    },
-    {
-        "name":"color",
-        "description":"役職パネルの色を指定します(16進数で指定してください。)",
-        "type": 3,
-        "required": False
-    }
-    ])
-async def panel_create(ctx: SlashContext, role: discord.Role, panel_title: str, emoji: str, color: str = None):
+@tree.command(name='panel_create', description='役職パネルを作成します。')
+@app_commands.describe(role='役職パネルに追加するロールを指定してください', panel_title='パネルのタイトルを指定できます。', emoji="ロールの絵文字を追加します。", color='役職パネルの色を指定します(16進数で指定してください。)')
+async def panel_create(ctx: discord.Interaction, role: discord.Role, panel_title: str, emoji: str, color: str = None):
     if ctx.author.guild_permissions.manage_roles:
         m = await ctx.channel.send('<a:b_sending:1108227693230702642>役職パネルを作成しています………')
         if color is not None:
@@ -404,33 +199,15 @@ async def panel_create(ctx: SlashContext, role: discord.Role, panel_title: str, 
         embed.set_footer(text=f'最終更新者:{ctx.author.name}')
         await m.add_reaction(f'{emoji}')
         await m.edit(content='ロールに対応する絵文字にリアクションするとロールを受け取ることができます。', embed=embed)
-        reply = await ctx.send("役職パネルを作成しました！")
+        reply = await ctx.response.send_message("役職パネルを作成しました！")
         await asyncio.sleep(3)
         await reply.delete()
     else:
-        await ctx.send("ロールの管理権限を持っていないため実行できません。")
+        await ctx.response.send_message("ロールの管理権限を持っていないため実行できません。")
 
-@slash.slash(name='panel_edit', description='役職パネルを編集します。', options=[
-    {
-        "name":"url",
-        "description":"役職パネルのメッセージURLを入力してください。",
-        "type": 3,
-        "required": True
-    },
-    {
-        "name":"title",
-        "description":"パネルのタイトルを編集できます。",
-        "type": 3,
-        "required": False
-    },
-    {
-        "name":"color",
-        "description":"役職パネルの色を指定します(16進数で指定してください。)",
-        "type": 3,
-        "required": False
-    }
-    ])
-async def panel_edit(ctx: SlashContext, url: str, title: str = None, color: str = None):
+@tree.command(name='panel_edit', description='役職パネルを編集します。')
+@app_commands.describe(url='役職パネルのメッセージURLを入力してください。', title='役職パネルのタイトルを編集できます。', color='役職パネルの色を指定します。(16進数で指定してください。)')
+async def panel_edit(ctx: discord.Interaction, url: str, title: str = None, color: str = None):
     if ctx.author.guild_permissions.manage_roles:
         message_id = extract_message_id(url)
         channel = ctx.channel
@@ -450,86 +227,21 @@ async def panel_edit(ctx: SlashContext, url: str, title: str = None, color: str 
                 else:
                     existing_embed.color = discord.Color(int(color, 16))
                 await message.edit(embed=existing_embed)
-                m = await ctx.send("変更が完了しました。")
+                m = await ctx.response.send_message("変更が完了しました。")
                 await asyncio.sleep(5)
                 await m.delete()
             else:
-                await ctx.send("指定されたメッセージは役職パネルではありません。")
+                await ctx.response.send_message("指定されたメッセージは役職パネルではありません。")
         else:
-            await ctx.send("指定されたメッセージURLはbotのメッセージではないため利用できません。")
+            await ctx.response.send_message("指定されたメッセージURLはbotのメッセージではないため利用できません。")
     else:
-        await ctx.send("ロールの管理権限を持っていないため実行できません。")
+        await ctx.response.send_message("ロールの管理権限を持っていないため実行できません。")
 
-@slash.slash(name="panel_add_role", description="役職パネルにロールを追加します(一度につき最大5つまで同時追加が可能です。)", options=[
-    {
-        "name":"url",
-        "description":"役職を追加するパネルのメッセージURLを入力してください。",
-        "type": 3,
-        "required": True
-    },
-    {
-        "name":"role1",
-        "description":"追加する役職を入力",
-        "type": 8,
-        "required": True
-    },
-    {
-        "name":"emoji1",
-        "description":"役職に追加する絵文字を指定",
-        "type": 3,
-        "required": True
-    },
-        {
-        "name":"role2",
-        "description":"追加する役職を入力(2つめ)",
-        "type": 8,
-        "required": False
-    },
-    {
-        "name":"emoji2",
-        "description":"役職に追加する絵文字を指定(2つめ)",
-        "type": 3,
-        "required": False
-    },
-    {
-        "name":"role3",
-        "description":"追加する役職を入力(3つめ)",
-        "type": 8,
-        "required": False
-    },
-    {
-        "name":"emoji3",
-        "description":"役職に追加する絵文字を指定(3つめ)",
-        "type": 3,
-        "required": False
-    },
-        {
-        "name":"role4",
-        "description":"追加する役職を入力(4つめ)",
-        "type": 8,
-        "required": False
-    },
-    {
-        "name":"emoji4",
-        "description":"役職に追加する絵文字を指定(4つめ)",
-        "type": 3,
-        "required": False
-    },
-        {
-        "name":"role5",
-        "description":"追加する役職を入力(5つめ)",
-        "type": 8,
-        "required": False
-    },
-    {
-        "name":"emoji5",
-        "description":"役職に追加する絵文字を指定(5つめ)",
-        "type": 3,
-        "required": False
-    },])
-async def panel_add_role(ctx: SlashContext, url: str, role1: discord.Role, emoji1: str, role2: discord.Role = None, emoji2: str = None, role3: discord.Role = None, emoji3: str = None, role4: discord.Role = None, emoji4: str = None, role5: discord.Role = None, emoji5: str =None):
+@tree.command(name="panel_add_role", description="役職パネルにロールを追加します(一度につき最大5つまで同時追加が可能です。)")
+@app_commands.describe(role1='追加する役職を入力(1つめ)', emoji1='役職に追加する絵文字を指定(1つめ)', role2='追加する役職を入力(2つめ)', emoji2='役職に追加する絵文字を指定(2つめ)', role3='追加する役職を入力(3つめ)', emoji3='役職に追加する絵文字を指定(3つめ)', role4='追加する役職を入力(4つめ)', emoji4='役職に追加する絵文字を指定(4つめ)', role5='追加する役職を入力(5つめ)', emoji5='役職に追加する絵文字を指定(5つめ)', )
+async def panel_add_role(ctx: discord.Interaction, url: str, role1: discord.Role, emoji1: str, role2: discord.Role = None, emoji2: str = None, role3: discord.Role = None, emoji3: str = None, role4: discord.Role = None, emoji4: str = None, role5: discord.Role = None, emoji5: str =None):
     if ctx.author.guild_permissions.manage_roles:
-        m = await ctx.send("<a:b_sending:1108227693230702642>処理中…")
+        m = await ctx.response.send_message("<a:b_sending:1108227693230702642>処理中…")
         message_id = extract_message_id(url)
         channel = ctx.channel
         try:
@@ -580,24 +292,13 @@ async def panel_add_role(ctx: SlashContext, url: str, role1: discord.Role, emoji
             except:
                 await m.edit(content="エラーが発生しました。\n引数不足もしくは、絵文字が利用不可のサーバーで作成されたものです。")
     else: 
-        await ctx.send("ロールの管理権限がないため実行できません。")
+        await ctx.response.send_message("ロールの管理権限がないため実行できません。")
 
-@slash.slash(name="panel_remove_role", description="指定した役職を削除します。", options=[
-    {
-        "name":"url",
-        "description":"パネルのメッセージURL",
-        "type": 3,
-        "required": True
-    },
-    {
-        "name":"role",
-        "description":"パネルから削除するロール",
-        "type": 8,
-        "required": True
-    }])
-async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
+@tree.command(name="panel_remove_role", description="指定した役職を削除します。")
+@app_commands.describe(url='パネルのメッセージURL', role='パネルから削除するロール')
+async def panel_remove_role(ctx: discord.Interaction, url: str, role: discord.Role):
     if ctx.author.guild_permissions.manage_roles:
-        m = await ctx.send("<a:b_sending:1108227693230702642>処理中…")
+        m = await ctx.response.send_message("<a:b_sending:1108227693230702642>処理中…")
         message_id = extract_message_id(url)
         channel = ctx.channel
         try:
@@ -629,10 +330,10 @@ async def panel_remove_role(ctx: SlashContext, url: str, role: discord.Role):
         else:
             await m.edit(content="指定されたメッセージはbotのメッセージではないため利用できません。")
     else:
-        await ctx.send(content="ロールの管理権限がないため実行できません。")
+        await ctx.response.send_message(content="ロールの管理権限がないため実行できません。")
 
-@slash.slash(name="afk_set",description="AFKチャンネルに移動したユーザーに通知を送信するか設定できます。")
-async def afk_set(ctx: SlashContext):
+@tree.command(name="afk_set",description="AFKチャンネルに移動したユーザーに通知を送信するか設定できます。")
+async def afk_set(ctx: discord.Interaction):
     if ctx.author.guild_permissions.manage_roles:
         with open('harine_zumin/settings.json', 'r') as f:
             data = json.load(f)
@@ -643,9 +344,32 @@ async def afk_set(ctx: SlashContext):
         data.append(guild)
         with open('harine_zumin/settings.json', 'w') as f:
             json.dump(data, f)
-        await ctx.send("設定が完了しました。")
+        await ctx.response.send_message("設定が完了しました。")
     else:
-        await ctx.send("この操作には管理者権限が必要になります！")
+        await ctx.response.send_message("この操作には管理者権限が必要になります！")
+
+@tree.command(name='guild_info', description='サーバー情報を取得します。')
+async def guild_info(ctx: discord.Interaction):
+    guild=client.get_guild(ctx.guild.id)
+    name=guild.name
+    reader=guild.owner.name
+    image=guild.icon.url
+    count=guild.member_count
+
+    embed=discord.Embed(color=0x00ff04)
+    embed.set_author(name=name, icon_url=image)
+    embed.set_thumbnail(url=image)
+    embed.add_field(name=サーバーの所有者, value=reader, inline=True)
+    embed.add_field(name=メンバーの数, value=count, inline=True)
+    await ctx.response.send_message(embed=embed)
+    
+@tree.command(name='seaver_boostters', description='サーバーにブーストしているユーザーを返します。')
+async def seaver_boostters (ctx: discord.Interaction):
+    guild=client.get_guild(ctx.guild.id)
+    boost_users=guild.premium_subscribers
+    embed=discord.Embed(title='サーバーブースターのリスト', color=0xff00f7)
+    embed.from_dict(boost_users)
+    await ctx.response.send_message(embed=embed)
     
 #メッセージ送信時
 @client.event
@@ -661,119 +385,6 @@ async def on_message(message):
       index = random.randint(0, len(texts) - 1)
       reply = texts[index]
       await message.reply(reply)
-
-    if message.channel.name in "逆翻訳チャンネル":
-        if message.author.id == 1:
-            if message.reference:
-                return
-            await message.author.send("現在、あなたは「**予期しないBOTの動作を意図的に複数回誘発した**」として、利用制限を受けております。\n制限の詳細については、`anima_zumin_0206`までお願いします。")
-            return
-        channelid = message.channel.id
-        channel = client.get_channel(channelid)
-        is_nsfw = channel.is_nsfw()
-        max_attempts = 4  # 最大再試行回数
-        attempt = 0
-        if message.author.bot:
-            return
-        if message.reference:
-            return
-        wait_message = await message.reply("<a:b_sending:1108227693230702642>読み込み中です…\nこの読み込みには数分かかることがあります…。")
-        if is_nsfw is False:
-            with open('harine_zumin/ward_filter.json', 'r') as f:
-                ward_f = json.load(f)
-            if str(ward_f).find(message.content) != -1:
-                await wait_message.edit(content="不適切な単語を検出しました。翻訳を中止します。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
-                return
-        while attempt < max_attempts:
-            async with message.channel.typing():
-                try:
-                    text1 = message.content
-                    translator = Translator()
-                    translated1 = translator.translate(text1, dest='ko')
-                    await wait_message.edit(content=f"処理中…\nSTEP (1/5)\nTry ({attempt+1}/{max_attempts-1})")
-                    translated2 = translator.translate(translated1.text, dest='ar')
-                    await wait_message.edit(content=f"処理中…\nSTEP (2/5)\nTry ({attempt+1}/{max_attempts-1})")
-                    translated3 = translator.translate(translated2.text, dest='ja')
-                    await wait_message.edit(content=f"処理中…\nSTEP (3/5)\nTry ({attempt+1}/{max_attempts-1})")
-                    translated4 = translator.translate(translated3.text, dest='sd')
-                    await wait_message.edit(content=f"処理中…\nSTEP (4/5)\nTry ({attempt+1}/{max_attempts-1})")
-                    translated5 = translator.translate(translated4.text, dest='en')
-                    await wait_message.edit(content=f"<a:b_sending:1108227693230702642>しばらくお待ち下さい…\n日本語に戻しています…\nSTEP (5/5)\nTry ({attempt+1}/{max_attempts-1})")
-                    translated11 = translator.translate(translated5.text, dest='ja')
-                except Exception as e:
-                    if attempt == 0:
-                        e_message = f"エラーが発生しました。5秒後に再試行します…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts-1})"
-                        slep = 5
-                        #エラーログをハリネズミン！の巣！へ送信する処理
-                        channel = client.get_channel(1118756012351029358)
-                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
-                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
-                        embed.timestamp = datetime.datetime.utcnow()
-                        await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
-                        #エラーログの処理はここまで
-                    elif attempt == 1:
-                        e_message = f"エラーが発生しました。10秒後に再試行します…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts-1})"
-                        slep = 10
-                        #エラーログをハリネズミン！の巣！へ送信する処理
-                        channel = client.get_channel(1118756012351029358)
-                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
-                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
-                        embed.timestamp = datetime.datetime.utcnow()
-                        await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
-                        #エラーログの処理はここまで
-                    elif attempt == 2:
-                        e_message = f"エラーが発生しました。15秒後に再試行します…<a:b_restart:1126125262430552064>\nTry ({attempt+1}/{max_attempts-1})"
-                        slep = 15
-                        #エラーログをハリネズミン！の巣！へ送信する処理
-                        channel = client.get_channel(1118756012351029358)
-                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳細:\n```\n{str(e)}\n```", color=0xff0000)
-                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
-                        embed.timestamp = datetime.datetime.utcnow()
-                        await channel.send(content=f"逆翻訳機能のエラー\n処理試行回数:({attempt+1}/{max_attempts-1})", embed=embed)
-                        #エラーログの処理はここまで
-                    else:
-                        e_message = f"最大試行回数に到達しました。処理を中断し、エラー情報を収集しています…<a:b_restart:1126125262430552064>"
-                        slep = 3
-                        #エラーログをハリネズミン！の巣！へ送信する処理
-                        channel = client.get_channel(1118756012351029358)
-                        embed=discord.Embed(description=f"例外処理されていないエラーが発生しました。\n詳�����������������:\n```\n{str(e)}\n```", color=0xff0000)
-                        embed.add_field(name="エラーが発生したサーバー", value=f"「{message.guild.name}」\nGuild ID:({message.guild.id})", inline=True)
-                        embed.timestamp = datetime.datetime.utcnow()
-                        await channel.send(content=f"逆翻訳機能のエラー\n処理に失敗しました。", embed=embed)
-                        #エラーログの処理はここまで
-                    await wait_message.edit(content=e_message)
-                    attempt += 1
-                    time.sleep(slep)
-                    e_text = str(e)
-                else:
-                    #翻訳が正常に終了したときの処理
-                    if is_nsfw is False:
-                        if str(ward_f).find(str(translated11.text)) != -1:
-                            await wait_message.edit(content="不適切な翻訳を検出しました。\nワードフィルタリングを無効化するには、NSFWチャンネルをご利用ください。")
-                            return
-                        else:
-                            embed=discord.Embed(color=0x05c5f5)
-                            embed.set_author(name=message.author.name, icon_url=f"https://media.discordapp.net/avatars/{message.author.id}/{message.author.avatar}.png?size=1024")
-                            await wait_message.edit(content=translated11.text, embed=embed)
-                    else:
-                        embed=discord.Embed(color=0x05c5f5)
-                        embed.set_author(name=message.author.name, icon_url=f"https://media.discordapp.net/avatars/{message.author.id}/{message.author.avatar}.png?size=1024")
-                        await wait_message.edit(content=translated11.text, embed=embed)
-                    break
-        else:
-            embed=discord.Embed(description=f"例外処理されていないエラーが発生しました\n詳細:\n```\n{e_text}\n```", color=0xff0000)
-            embed.add_field(name="何度もエラー発生する場合は…", value="bot開発者の`anima_zumin_0206`までお知らせください。", inline=True)
-            embed.add_field(name="サポートサーバーに参加してみませんか？", value=f"サポートサーバーではより迅速に対応できます。\n{support_guild}", inline=True)
-            embed.timestamp = datetime.datetime.utcnow()
-            await wait_message.edit(content="<:b_error:1041554270958387220>transrate is Faild", embed=embed)
-    elif message.channel.id == '1127941083855343636':
-        
-        text = message.content
-        translator = Translator()
-        translated = translator.translate(text, dest='en')
-        await message.reply(translated)
-    else:
-        return
 
 #ボイスチャンネル関連
 @client.event
@@ -820,12 +431,15 @@ async def on_voice_state_update(member, before, after):
         if channel is not None:
             # ログをテキストチャンネルに送信
             await channel.send(embed=embed)
+    #AFK移動時
     if after.afk is not False:
         embed=discord.Embed(title="寝落ち通知", description=f"あなたは、「{member.guild.name}」でAFKチャンネルに移動されました。", color=int('adff2f', 16))
         embed.timestamp = datetime.datetime.utcnow()
         await member.send(embed=embed)
+    #配信開始時
     if after.self_stream is True:
         send_message = discord.utils.get(member.guild.text_channels, name='ボイスチャンネルログ')
+        activities = member.activities
         embed=discord.Embed(title="Go Live Stream", description="Activityの詳細",color=int('ffa500', 16))
         if str(member.mobile_status) != 'offline':
             user_client = "📱モバイルクライアント"
@@ -835,17 +449,54 @@ async def on_voice_state_update(member, before, after):
 	        user_client = "🌐ブラウザクライアント"
         else:
 	        user_client = "❓不明なクライアント"
-        if member.activity is not None:
-            game_name = member.activity.name
-            game_state = member.activity.state
-            embed.add_field(name="プレイ中のゲーム", value=game_name, inline=False)
-            embed.add_field(name="ゲームのステータス", value=game_state, inline=True)
-        else:
-	        embed.add_field(name="プレイ中のゲーム", value="Activityの情報はありませんでした。", inline=False)
-        embed.add_field(name="ユーザーのクライアント", value=user_client, inline=False)
+        if activities:
+            for activity in activities:
+                if activity.type == discord.ActivityType.playing:
+                    game_name = activity.name
+                    game_state = activity.state
+                    embed=discord.Embed(title="Go Live Stream", description="Activityの詳細",color=int('ffa500', 16))
+                    embed.add_field(name="プレイ中のゲーム", value=game_name, inline=False)
+                    embed.add_field(name="ゲームのステータス", value=game_state, inline=True)
+                    break
+                elif activity.type == discord.ActivityType.streaming:
+                    game_name = activity.name
+                    game_state = activity.state
+                    embed=discord.Embed(title="Go Live Stream", description="Activityの詳細",color=int('ffa500', 16))
+                    embed.add_field(name="twich Stream", value=game_name, inline=False)
+                    embed.add_field(name="twich state", value=game_state, inline=True)
+                    break
+                elif activity.type == discord.ActivityType.listening:
+                    game_name = activity.title
+                    game_state = activity.artist
+                    embed=discord.Embed(title="Go Live Stream", description="Activityの詳細",color=int('ffa500', 16))
+                    embed.add_field(name="Spotify Listen to", value=game_name, inline=False)
+                    embed.add_field(name="Spotify state", value=game_state, inline=True)
+                    break
+                elif activity.type == discord.ActivityType.watching:
+                    game_name = activity.name
+                    game_state = activity.state
+                    embed=discord.Embed(title="Go Live Stream", description="Activityの詳細",color=int('ffa500', 16))
+                    embed.add_field(name="Spotify Listen to", value=game_name, inline=False)
+                    embed.add_field(name="Spotify state", value=game_state, inline=True)
+                break
+            else:
+                embed.add_field(name="プレイ中のゲーム", value="Activity���情報はありませんでした。", inline=False)
+                embed.add_field(name="ユーザーのクライアント", value=user_client, inline=False)
+                embed.set_author(name=f"{member.name}", icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
+                embed.timestamp = datetime.datetime.utcnow()
+            if send_message is not None:
+                embed.add_field(name="ユーザーのクライアント", value=user_client, inline=False)
+                embed.set_author(name=f"{member.name}", icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
+                embed.timestamp = datetime.datetime.utcnow()
+                await send_message.send(content=f'Go Live Stream in <#{after.channel.id}>', embed=embed)
+    #配信終了時
+    elif before.self_stream != after.self_stream :
+        send_message = discord.utils.get(member.guild.text_channels, name='ボイスチャンネルログ')
+        embed=discord.Embed(title='Go Live Stream',description="配信は終了しました。(し〜ん)",color=0xfbff00)
         embed.set_author(name=f"{member.name}", icon_url="https://media.discordapp.net/avatars/{}/{}.png?size=1024".format(member.id,member.avatar))
         embed.timestamp = datetime.datetime.utcnow()
-        await send_message.send(embed=embed)
+        if send_message is not None:
+            await send_message.send(embed=embed)
 
 #メッセージ削除
 @client.event
@@ -908,12 +559,15 @@ async def on_guild_join(guild):
 #役職パネル用リアクションが追加されたときのイベントハンドラ
 @client.event
 async def on_raw_reaction_add(payload):
-    if payload.user_id == client.user.id:
+    if payload.user_id == client.user.id or payload.member.bot:
         return
     try:
         channel = client.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
-    except:
+    except Exception as e:
+        channel = client.get_channel(1118756012351029358)
+        embed=discord.Embed(title="例外処理エラー(役職パネル)", description=f"詳細:\n```\n{str(e)}```\n")
+        await channel.send(embed=embed)
         pass
     try:
         if message.author.id == client.user.id:
@@ -962,6 +616,34 @@ async def on_raw_reaction_add(payload):
         embed=discord.Embed(title="例外処理エラー(役職パネル)", description=f"詳細:\n```\n{str(e)}```\n")
         await channel.send(embed=embed)
 
+@client.event
+async def on_reaction_add(reaction, user):
+    if reaction.message.author.id == client.user.id:
+        return
+    if str(reaction.emoji) == '🤔':
+        channel = discord.utils.get(reaction.message.guild.channels, name="thinking-channel")
+        channel_message = f'<#{reaction.message.channel.id}>'
+        count = reaction.count
+        content = reaction.message.content
+        if count >= 15:
+            msg_content = f'🤔🥇 **{count}** {channel_message} [Jump to message](https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id})'
+        elif count >= 10:
+            msg_content = f'🤔🥈 **{count}** {channel_message} [Jump to message](https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id})'
+        elif count >= 5:
+            msg_content = f'🤔🥉 **{count}** {channel_message} [Jump to message](https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id})'
+        else:
+            msg_content = f'🤔 **{count}** {channel_message} [Jump to message](https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id})'
+        if channel is not None:
+            embed=discord.Embed(description=content,color=0x00ff2a)
+            embed.set_author(name=f"{reaction.message.author.name}", url=f'https://discord.com/channels/{reaction.message.guild.id}/{reaction.message.channel.id}/{reaction.message.id}', icon_url=f"https://media.discordapp.net/avatars/{reaction.message.author.id}/{reaction.message.author.avatar}.png?size=1024")
+            embed.set_footer(text=f'ID:{reaction.message.id}')
+            embed.timestamp = datetime.datetime.utcnow()
+            reaction_message = await channel.send(content=msg_content, embed=embed)
+            await reaction_message.add_reaction('🤔')
+        else:
+            return
+        
+
 #起動時処理
 @client.event
 async def on_ready():
@@ -972,5 +654,8 @@ async def on_ready():
     print(client.user.name)  # Botの名前
     print(discord.__version__)  # discord.pyのバージョン
     print('------')
+    if sync_command:
+        await tree.sync()
+        print('コマンド同期を実行しました！')
 
-client.run('YOUR TOKEN')
+client.run('TOKEN')
